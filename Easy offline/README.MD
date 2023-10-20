@@ -46,7 +46,7 @@ http://aria.hoothin.com/#!/new/$base64@@Aria2@@@@data:image/png;base64,iVBORw0KG
 
 ### 自定義例子3 - Post請求RPC遠程下載
 <pre>
-p:http://192.168.32.1:6800/jsonrpc?id=$random&jsonrpc=2.0&method=aria2.addUri&amp;params=["token:123456",["$url"]]@@Aria2RPC@@@@@@df2a00
+p:http://localhost:6800/jsonrpc?method=aria2.addUri&amp;params=["token:",["$url"]]@@Aria2RPC@@@@@@df2a00
 </pre>
 導入后需要自行修改網址与 token 密鑰
 
