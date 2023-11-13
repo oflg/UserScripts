@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         草榴小助手
 // @namespace    hoothin
-// @version      0.6.4
+// @version      0.6.7
 // @description  草榴小助手修复，提供“加亮今日帖子”、“移除viidii跳转”、“图片自动缩放”、“种子链接转磁力链”、“预览整页图片”、“游客站内搜索”、“返回顶部”等功能！
 // @author       NewType & hoothin
 // @match        *://*.t66y.com/*
@@ -119,6 +119,15 @@
                 $(this).attr('href', newHref);
             });
 
+            $.fn.isInViewport = function() {
+                var elementTop = $(this).offset().top;
+                var elementBottom = elementTop + $(this).outerHeight();
+                var viewportTop = $(window).scrollTop();
+                var viewportBottom = viewportTop + $(window).height();
+                return elementBottom > viewportTop && elementTop < viewportBottom;
+            };
+
+
             // 种子链接转磁力链
             var torLink = $("a[href*=\'?hash\=\']");
             if( torLink.length > 0 ){
@@ -139,19 +148,38 @@
                 var quickReply = $( `<input style="margin-left: 10px" class="btn" type="button" value="${quickReplyStr}">` );
                 quickReply.insertAfter( "form .btn" );
                 var replyStr = defaultReply;
-                if (document.title.indexOf("打卡签到") !== -1) {
-                    var spaceStr = "";
-                    var spaceLen = Math.floor(Math.random() * 10);
-                    for (var i = 0; i < spaceLen; i++) {
-                        spaceStr += " ";
-                    }
-                    replyStr = "今日签到" + spaceStr;
-                }
 
                 helper.getScript('//cdn.jsdelivr.net/npm/jquery.cookie@1.4.1/jquery.cookie.min.js', e => {
+                    var $tLike = $(".t_like");
+                    if ($tLike.length) {
+                        var $tLikeClone = $tLike.clone();
+                        if (!$tLike.isInViewport()) {
+                            $("#conttpc").prepend($tLikeClone);
+                        }
+
+                        $(window).on("resize scroll", function() {
+                            if ($tLike.isInViewport()) {
+                                if ($tLikeClone.parent().length) $tLikeClone.detach();
+                            } else {
+                                if ($tLikeClone.parent().length == 0) $("#conttpc").prepend($tLikeClone);
+                            }
+                        });
+                    }
                     var lastReplyTime = $.cookie('lastReplyTime');
                     var customReplyStr = $.cookie('customReplyStr');
-                    if (customReplyStr) replyStr = customReplyStr;
+                    var isCheckIn = document.title.indexOf("打卡签到") !== -1;
+                    if (customReplyStr) {
+                        replyStr = customReplyStr;
+                        $.cookie('customReplyStr', replyStr, { expires: 365, path: '/' });
+                    }
+                    if (isCheckIn) {
+                        var spaceStr = "";
+                        var spaceLen = Math.floor(Math.random() * 10);
+                        for (var i = 0; i < spaceLen; i++) {
+                            spaceStr += " ";
+                        }
+                        replyStr = "今日签到";// + spaceStr;
+                    }
                     quickReply.attr('title', replyStr + "（右击修改）");
                     var formTitle = $("form td.h>b").text();
                     function setCountdown() {
@@ -178,35 +206,109 @@
                         setCountdown();
                     }
                     let form = $('form[name="FORM"]');
+                    function replyFail() {
+                        submitBtn.val("提 交");
+                        quickReply.val("回复失败");
+                        $("form td.h").css("background", "rgb(244, 67, 54)");
+                        setTimeout(() => {
+                            quickReply.val(quickReplyStr);
+                            $("form td.h").css("background", "");
+                        }, 2000);
+                    }
+                    function replySuccess() {
+                        lastReplyTime = Date.now();
+                        $.cookie('lastReplyTime', lastReplyTime, { expires: 7, path: '/' });
+                        submitBtn.val("提 交");
+                        quickReply.val("回复成功");
+                        quickReply.css("background", "yellow");
+                        $("form td.h").css("background", "yellow");
+                        setTimeout(() => {
+                            setCountdown();
+                            $("form td.h").css("background", "");
+                        }, 2000);
+                    }
+                    function isRushTime() {
+                        var date = new Date();
+                        var year = date.getFullYear();
+                        var month = date.getMonth()+1;
+                        var today = date.getDate();
+                        var hour = date.getHours();
+                        if (hour < 20) return false;
+
+                        var newYear = year;
+                        var newMonth = month++;
+                        if (month > 12) {
+                            newMonth = 1;
+                            newYear++;
+                        }
+                        var newDate = new Date(newYear, newMonth, 1);
+                        var monthLast2Day = (new Date(newDate.getTime() - 2 * 1000 * 60 * 60 * 24)).getDate();
+                        return (today == monthLast2Day);
+                    }
+                    function submitReply() {
+                        $.ajax({
+                            type: form.attr('method'),
+                            url: form.attr('action'),
+                            data: form.serialize(),
+                            success: function (res) {
+                                if (res.indexOf("發貼完畢點擊進入主題列表") == -1) {
+                                    replyFail();
+                                } else {
+                                    replySuccess();
+                                }
+                            },
+                            fail: function (e) {
+                                replyFail();
+                                quickReply.removeAttr("disabled");
+                            }
+                        });
+                    }
+                    if (isCheckIn && isRushTime()) {
+                        let reachRushMinute = false;
+                        var rushReply = $( `<input style="margin-left: 10px" class="btn" type="button" value="定時搶簽">` );
+                        function checkRush(timeGap) {
+                            setTimeout(() => {
+                                let date = new Date();
+                                if (date.getHours() == 0) {
+                                    textarea.val("今日签到");
+                                    submitReply();
+                                    let rushTimes = 10;
+                                    let rushTimer = setInterval(() => {
+                                        if (--rushTimes > 0) {
+                                            submitReply();
+                                        } else {
+                                            clearInterval(rushTimer);
+                                            rushReply.val("搶簽結束");
+                                        }
+                                    }, 1);
+                                } else {
+                                    if (reachRushMinute) {
+                                        if (date.getSeconds() > 57) {
+                                            checkRush(5);
+                                        } else if (date.getSeconds() > 50) {
+                                            checkRush(500);
+                                        } else if (date.getSeconds() > 30) {
+                                            checkRush(1000);
+                                        }
+                                    } else if (date.getHours() == 23 && date.getMinutes() == 59) {
+                                        reachRushMinute = true;
+                                        checkRush(1000);
+                                    } else {
+                                        checkRush(5000);
+                                    }
+                                }
+                            }, timeGap);
+                        }
+                        rushReply.insertAfter( "form .btn" );
+                        rushReply.click(function() {
+                            checkRush(5000);
+                            rushReply.attr("disabled", true);
+                            rushReply.val("搶簽中……");
+                        });
+                    }
                     document.FORM.onsubmit = function(event) {
                         if (checkpost(document.FORM)) {
-                            $.ajax({
-                                type: form.attr('method'),
-                                url: form.attr('action'),
-                                data: form.serialize(),
-                                success: function () {
-                                    submitBtn.val("提 交");
-                                    quickReply.val("回复成功");
-                                    quickReply.css("background", "yellow");
-                                    $("form td.h").css("background", "yellow");
-                                    setTimeout(() => {
-                                        setCountdown();
-                                        $("form td.h").css("background", "");
-                                    }, 2000);
-                                },
-                                fail: function () {
-                                    submitBtn.val("提 交");
-                                    quickReply.val("回复失败");
-                                    quickReply.css("background", "rgb(244, 67, 54)");
-                                    $("form td.h").css("background", "rgb(244, 67, 54)");
-                                    setTimeout(() => {
-                                        quickReply.val(quickReplyStr);
-                                        quickReply.css("background", "");
-                                        $("form td.h").css("background", "");
-                                    }, 2000);
-                                    quickReply.removeAttr("disabled");
-                                }
-                            });
+                            submitReply();
                         }
                         event.preventDefault();
                         return false;
@@ -214,8 +316,6 @@
                     quickReply.click(function() {
                         textarea.val(replyStr);
                         submitBtn.click();
-                        lastReplyTime = Date.now();
-                        $.cookie('lastReplyTime', lastReplyTime, { expires: 7, path: '/' });
                         quickReply.attr("disabled", true);
                     });
                     quickReply.on('contextmenu', function(e) {
@@ -253,7 +353,7 @@
 
             helper.addCss('.viewer{position:fixed; top:7px; right:7px; cursor:pointer;}');
             helper.addScript('function Viewer(){ $("#lightgallery").lightGallery(); $("html,body").animate({scrollTop:0}, 500); $("div#viewer,div#main,div#footer").fadeToggle(300); }');
-            $('body').append(`<svg class="viewer" onmousedown="this.style.opacity=0;" onclick="Viewer();this.style.opacity=1;" title="预览整页图片" style="width: 50px;height: 50px;vertical-align: middle;fill: currentColor;overflow: hidden;" viewBox="0 0 1152 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="6334"><path d="M871.125 433.75a119.85 119.85 0 1 0 0-239.66 119.85 119.85 0 0 0 0 239.66z m209.622-399.318H102.272c-38.955 0-69.93 31.701-69.93 70.656v817.067c0 38.954 30.975 70.656 69.93 70.656h978.475c38.954 0 69.93-31.702 69.93-70.656V105.088c0-38.955-30.976-70.656-69.93-70.656z m-257.28 493.44a42.837 42.837 0 0 0-31.958-15.488c-12.714 0-21.674 5.973-31.957 14.208l-46.677 39.467c-9.728 6.997-17.494 11.733-28.672 11.733a41.301 41.301 0 0 1-27.478-10.24 338.09 338.09 0 0 1-10.752-10.24L511.701 412.075a55.04 55.04 0 0 0-41.685-18.774c-16.725 0-32.213 8.278-41.941 19.499L112.213 793.643V143.53c2.475-16.982 15.702-29.227 32.683-29.227h892.928c17.237 0 31.19 12.757 32.213 29.952l0.726 649.899L823.38 527.872z" p-id="6335"></path></svg>`);
+            $('body').append(`<svg class="viewer" onmousedown="this.style.opacity=0;" onclick="Viewer();this.style.opacity=1;" title="预览整页图片" style="width: 50px;height: 50px;vertical-align: middle;fill: currentColor;overflow: hidden;" viewBox="0 0 1152 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M871.125 433.75a119.85 119.85 0 1 0 0-239.66 119.85 119.85 0 0 0 0 239.66z m209.622-399.318H102.272c-38.955 0-69.93 31.701-69.93 70.656v817.067c0 38.954 30.975 70.656 69.93 70.656h978.475c38.954 0 69.93-31.702 69.93-70.656V105.088c0-38.955-30.976-70.656-69.93-70.656z m-257.28 493.44a42.837 42.837 0 0 0-31.958-15.488c-12.714 0-21.674 5.973-31.957 14.208l-46.677 39.467c-9.728 6.997-17.494 11.733-28.672 11.733a41.301 41.301 0 0 1-27.478-10.24 338.09 338.09 0 0 1-10.752-10.24L511.701 412.075a55.04 55.04 0 0 0-41.685-18.774c-16.725 0-32.213 8.278-41.941 19.499L112.213 793.643V143.53c2.475-16.982 15.702-29.227 32.683-29.227h892.928c17.237 0 31.19 12.757 32.213 29.952l0.726 649.899L823.38 527.872z"></path></svg>`);
         }
 
         /*-------------------------------------------------------------------------------------------------------------------------------------------*/

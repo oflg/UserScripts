@@ -141,10 +141,13 @@ body>>let title="俞亮/時光",chs=[];item.querySelectorAll("ul.list>li>a").for
 .BCsectionTwo-top-chapter>a@@@@@@let content=doc.querySelector("#C0NTENT");let r="\n",ps=content.querySelectorAll("p");for(let i=0;i<ps.length;i++){let p=ps[i];if(p.style.cssText)break;else r+=p.innerText+"\n"};let script=content.nextElementSibling;let other=script.innerText.match(/html\(d\((".*?"), "(.*?)"\)\);/);let a=JSON.parse(other[1]),b=other[2];let cryptojs=document.createElement("script");cryptojs.src="/assets/js/cryptojs.min.js";cryptojs.charset="UTF-8";cryptojs.onload=()=>{function d(a, b) { b = CryptoJS.MD5(b).toString(); var d = CryptoJS.enc.Utf8.parse(b.substring(0, 16)); var e = CryptoJS.enc.Utf8.parse(b.substring(16)); return CryptoJS.AES.decrypt(a, e, { iv: d, padding: CryptoJS.pad.Pkcs7 }).toString(CryptoJS.enc.Utf8) };cb(r+d(a,b).replace(/<p>/g,"").replace(/<\/p>/g,"\n"));};document.head.appendChild(cryptojs);return false;
  ```
  18. [📕豆瓣閲讀](https://read.douban.com/column/64079189/)
-  > 礙於法律問題，不會給出具體規則。只是因爲有朋友詢問，因此手癢分析了一下，給出相關思路以供技術研究。後期豆瓣如若更新則不再更進。首先，豆瓣閲讀的内頁只有部分内容是明文，全文被加密了。每次訪問内頁，豆瓣會先檢索本地存儲中是否存在密文，如果不存在的話就去抓取密文，密文為 digest 的 sha256 加密得到，解密方法如下
-``` javascript
+ ``` css
+ a.chapter-item
+ ```
+  > 礙於法律問題，不會給出具體規則。只因爲有朋友詢問，所以手癢分析了一下，給出相關思路以供技術研究。後期如若豆瓣更新則不再跟進。首先，豆瓣閲讀的内頁只有部分内容是明文，全文被加密了。每次訪問内頁，豆瓣會先檢索本地存儲中是否存在密文，如果不存在的話就去抓取密文，密文為 digest 的 sha256 加密得到，解密方法如下：
+ ``` javascript
 function decode(t) {
-	const s = (new TextDecoder).decode(new Uint8Array([65, 69, 83, 45, 67, 66, 67]))
+    const s = (new TextDecoder).decode(new Uint8Array([65, 69, 83, 45, 67, 66, 67]))
     	, r = (new TextDecoder).decode(new Uint8Array([99, 114, 121, 112, 116, 111]))
     	, o = (new TextDecoder).decode(new Uint8Array([115, 117, 98, 116, 108, 101]))
         , a = (new TextDecoder).decode(new Uint8Array([100, 105, 103, 101, 115, 116]))
@@ -153,22 +156,24 @@ function decode(t) {
         , c = (new TextDecoder).decode(new Uint8Array([100, 101, 99, 114, 121, 112, 116]))
         , u = (new TextDecoder).decode(new Uint8Array([105, 118]));
     const e = Uint8Array.from(window.atob(t), (t=>t.charCodeAt(0)))
-      , i = e.buffer
-      , d = e.length - 16 - 13
-      , p = new Uint8Array(i,d,16)
-      , f = new Uint8Array(i,0,d)
-      , g = {};
+        , i = e.buffer
+        , d = e.length - 16 - 13
+        , p = new Uint8Array(i,d,16)
+        , f = new Uint8Array(i,0,d)
+        , g = {};
     return g.name = s,
-    g[u] = p,
-    function() {
-        const t = Ark.user
-          , e = t.isAnonymous ? document.cookie.replace(/.*bid=(\w+).*/,"$1") : t.id
-          , i = (new TextEncoder).encode(e);
-        return window[r][o][a](h, i).then((t=>window[r][o][l]("raw", t, s, !0, [c])))
-    }().then((t=>window[r][o][c](g, t, f))).then((t=>JSON.parse((new TextDecoder).decode(t))))
+    	g[u] = p,
+    	function() {
+            const t = Ark.user
+                , e = t.isAnonymous ? document.cookie.replace(/.*bid=(\w+).*/,"$1") : t.id
+                , i = (new TextEncoder).encode(e);
+            return window[r][o][a](h, i).then((t=>window[r][o][l]("raw", t, s, !0, [c])))
+        }().then((t=>window[r][o][c](g, t, f))).then((t=>JSON.parse((new TextDecoder).decode(t))))
 }
-```
+ ```
   > 因此規則可按如下步驟編寫，首先調用 https://read.douban.com/j/article_v2/get_reader_data, 透過表單形式提供當前章節的 aid（即爲 chapter 后的數字串），獲取 json.data 即爲密文，然後透過上方的解密方法獲取正文。正文位於 posts[0].contents 中，遍歷后讀取 data.text[0].content 拼接即可
+ 19. [📕愛發電](https://afdian.net/album/afee5ce2462d11ee897e52540025c377)
+  > 礙於我也是愛發電用戶，拿人手短，就不欺負它了。只給個思路，用第四層心法取 album_id 與 章節 id 去 https://afdian.net/api/post 請求數據即可。
 
 ### 測試網頁
 + http://www.gulongbbs.com/zhentan/bdlr/plje/Index.html
@@ -176,17 +181,23 @@ function decode(t) {
 + http://tieba.baidu.com/p/4871634479
 
 ### FAQ
-- 章節沒有「第幾章第幾節」的字樣怎麼辦？<br>
+- 章節沒有「第幾章第幾節」的字樣怎麼辦？ <br>
 參考第二層心法輸入其中一個章節名即可
-- 下載一定章節後失敗怎麼辦？<br>
-可能是網站限製了並發數，在設置中調低線程數即可
-- 按下快捷鍵無效怎麼辦？<br>
-可能是快捷鍵被其他應用接管了，使用腳本管理器中的命令菜單下載即可
-- 有無關幹擾字符怎麼辦？<br>
-設置裡輸入幹擾碼css選擇器即可，多個選擇器用逗號分隔
-- 章節順序不對怎麼辦？<br>
-默認是按網頁內出現位置排序。點擊設置，嘗試更改為“按網址重新排序”或者“按章節名重新排序”即可
-- 其他問題歡迎通過 email 聯繫我，有空可幫你解決。
+- 下載一定數量章節後抓取超時失敗怎麼辦？ <br>
+可能是網站限制了並發數，在設定中調低執行緒數即可。 設為正數代表執行緒數，負數則代表間隔x秒下載一章，例如`-2`代表每隔2秒下載一章
+- 按下快捷鍵沒有反應怎麼辦？ <br>
+可能是快捷鍵被其他應用程式接管了，使用腳本管理器中的命令選單下載即可
+- 有無關幹擾字元怎麼辦？ <br>
+設定裡輸入乾擾碼css選擇器即可，多個選擇器以逗號分隔
+- 章節順序不對怎麼辦？ <br>
+預設是按網頁內出現位置排序。 點擊設置，嘗試更改為“按網址重新排序”或“按章節名重新排序”即可
+- 章節標題有誤怎麼辦？ <br>
+預設是取章節連結文字為標題，可以在設定中自訂章節標題，輸入 title 即為抓取分頁頁面的標題，輸入 h1 即為抓取分頁頁面 h1 等級的文章標題
+- 下載内容不全怎麽辦？<br>
+可能因爲頁内正文是動態加載的，可嘗試在設置頁勾選“下載前打開篩選窗口”，然後選中“使用 iframe 後臺加載内容”
+- 抓取失敗是因為？ <br>
+NETWORK ERROR 説明網路錯誤，可能是當前本機網路故障，也可能是被目標網站封鎖了 IP。 TIMEOUT 説明訪問超時，可能是因爲當前網路速率過慢或目標網站流量超限
+- 其他問題歡迎透過 email 聯絡我，有空可幫你解決。
 
 ### 為啥要寫這個腳本？
 主要是<img src="https://stickershop.line-scdn.net/stickershop/v1/product/8692/LINEStorePC/main.png;compress=true" width=50 alt="怠惰啊" title="怠惰啊"/>

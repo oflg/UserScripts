@@ -10,7 +10,7 @@
 // @description:zh-TW    線上看圖工具，支援圖片翻轉、旋轉、縮放、彈出大圖、批量儲存
 // @description:pt-BR    Poderosa ferramenta de visualização de imagens on-line, que pode pop-up/dimensionar/girar/salvar em lote imagens automaticamente
 // @description:ru       Мощный онлайн-инструмент для просмотра изображений, который может автоматически отображать/масштабировать/вращать/пакетно сохранять изображения
-// @version              2023.10.20.1
+// @version              2023.11.13.1
 // @icon                 data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAMAAADXqc3KAAAAV1BMVEUAAAD////29vbKysoqKioiIiKysrKhoaGTk5N9fX3z8/Pv7+/r6+vk5OTb29vOzs6Ojo5UVFQzMzMZGRkREREMDAy4uLisrKylpaV4eHhkZGRPT08/Pz/IfxjQAAAAgklEQVQoz53RRw7DIBBAUb5pxr2m3/+ckfDImwyJlL9DDzQgDIUMRu1vWOxTBdeM+onApENF0qHjpkOk2VTwLVEF40Kbfj1wK8AVu2pQA1aBBYDHJ1wy9Cf4cXD5chzNAvsAnc8TjoLAhIzsBao9w1rlVTIvkOYMd9nm6xPi168t9AYkbANdajpjcwAAAABJRU5ErkJggg==
 // @namespace            https://github.com/hoothin/UserScripts
 // @homepage             https://www.hoothin.com
@@ -21,7 +21,7 @@
 // @connect              ipv4.google.com
 // @connect              image.baidu.com
 // @connect              www.tineye.com
-// @connect              www.hoothin.com
+// @connect              hoothin.com
 // @connect              *
 // @grant                GM_getValue
 // @grant                GM_setValue
@@ -42,7 +42,7 @@
 // @grant                GM.notification
 // @grant                unsafeWindow
 // @require              https://greasyfork.org/scripts/6158-gm-config-cn/code/GM_config%20CN.js?version=23710
-// @require              https://greasyfork.org/scripts/438080-pvcep-rules/code/pvcep_rules.js?version=1267210
+// @require              https://greasyfork.org/scripts/438080-pvcep-rules/code/pvcep_rules.js?version=1269250
 // @require              https://greasyfork.org/scripts/440698-pvcep-lang/code/pvcep_lang.js?version=1262309
 // @downloadURL          https://greasyfork.org/scripts/24204-picviewer-ce/code/Picviewer%20CE+.user.js
 // @updateURL            https://greasyfork.org/scripts/24204-picviewer-ce/code/Picviewer%20CE+.user.js
@@ -53,6 +53,7 @@
 // @exclude              *://mega.*/*
 // @exclude              *://*.mega.*/*
 // @exclude              *://onedrive.live.com/*
+// @run-at               document-body
 // @created              2011-6-15
 // @contributionURL      https://ko-fi.com/hoothin
 // @contributionAmount   1
@@ -159,6 +160,9 @@ if (window.top != window.self) {
 
 
   var isMacOSWebView = _global.navigator && /Macintosh/.test(navigator.userAgent) && /AppleWebKit/.test(navigator.userAgent) && !/Safari/.test(navigator.userAgent);
+  var URL = _global.URL || _global.webkitURL;
+  var revokeObjectURL = URL.revokeObjectURL;
+  var createObjectURL = URL.createObjectURL;
   var saveAs = _global.saveAs || ( // probably in some web worker
   typeof window !== 'object' || window !== _global ? function saveAs() {}
   /* noop */
@@ -183,9 +187,9 @@ if (window.top != window.self) {
       }
     } else {
       // Support blobs
-      a.href = URL.createObjectURL(blob);
+      a.href = createObjectURL(blob);
       setTimeout(function () {
-        URL.revokeObjectURL(a.href);
+        revokeObjectURL(a.href);
       }, 4E4); // 40s
 
       setTimeout(function () {
@@ -240,13 +244,12 @@ if (window.top != window.self) {
 
       reader.readAsDataURL(blob);
     } else {
-      var URL = _global.URL || _global.webkitURL;
-      var url = URL.createObjectURL(blob);
+      var url = createObjectURL(blob);
       if (popup) popup.location = url;else location.href = url;
       popup = null; // reverse-tabnabbing #460
 
       setTimeout(function () {
-        URL.revokeObjectURL(url);
+        revokeObjectURL(url);
       }, 4E4); // 40s
     }
   });
@@ -11669,7 +11672,7 @@ QRCode decode | https://zxing.org/w/decode?full=true&u=#t#
 QRCode | https://hoothin.com/qrcode/##t#
 ImgOps | https://imgops.com/#b#`;
 
-    var _GM_openInTab,_GM_setClipboard,_GM_xmlhttpRequest,_GM_registerMenuCommand,_GM_notification,GM_fetch;
+    var _GM_openInTab,_GM_setClipboard,_GM_xmlhttpRequest,_GM_registerMenuCommand,_GM_notification,GM_fetch,_GM_addStyle;
     if(typeof GM_openInTab!='undefined'){
         _GM_openInTab=GM_openInTab;
     }else if(typeof GM!='undefined' && typeof GM.openInTab!='undefined'){
@@ -11713,6 +11716,18 @@ ImgOps | https://imgops.com/#b#`;
         GM_fetch = true;
     } else {
         _GM_xmlhttpRequest = (f) => {fetch(f.url, {method: f.method || 'GET', body: f.data || '', headers: f.headers}).then(response => response.text()).then(data => {f.onload({response: data})}).catch(f.onerror())};
+    }
+    if (typeof GM_addStyle != 'undefined') {
+        _GM_addStyle = GM_addStyle;
+    } else if (typeof GM != 'undefined' && typeof GM.addStyle != 'undefined') {
+        _GM_addStyle = GM.addStyle;
+    } else {
+        _GM_addStyle = cssStr => {
+            let styleEle = document.createElement("style");
+            styleEle.innerHTML = cssStr;
+            document.head.appendChild(styleEle);
+            return styleEle;
+        };
     }
     if (GM_fetch) {
         GM_fetch = async (url, option) => {
@@ -11766,6 +11781,7 @@ ImgOps | https://imgops.com/#b#`;
         */
         type = parseInt(type || 0);
         if (name) name = name.split("\n")[0];
+        if (!url.replace) url = "";
         url = url.replace(/.*?\/\/[^\/]+\//, "");
         let nameFromUrl = "";
         let ext;
@@ -11812,7 +11828,10 @@ ImgOps | https://imgops.com/#b#`;
         saveAs(url, name);
     } : (url, name, type) => {
         name = document.title + " - " + getRightSaveName(url, name, type);
-        let urlSplit = url.split("/");
+        let urlSplit = ["", ""];
+        if (url.split) {
+            urlSplit = url.split("/");
+        }
         GM_download({
             url: url,
             name: name,
@@ -11891,7 +11910,12 @@ ImgOps | https://imgops.com/#b#`;
     function downloadImg(url, name, type, errCb) {
         urlToBlob(url, (blob, ext) => {
             if(blob){
-                saveAs(blob, document.title + " - " + getRightSaveName(url, name, type, ext));
+                try {
+                    saveAs(blob, document.title + " - " + getRightSaveName(url, name, type, ext));
+                } catch(e) {
+                    _GM_download(url, name, type);
+                    if (errCb) errCb();
+                }
             }else{
                 _GM_download(url, name, type);
                 if (errCb) errCb();
@@ -12943,7 +12967,7 @@ ImgOps | https://imgops.com/#b#`;
                 //ready必须在load之前触发。
 
                 if(img.complete){//图片已经加载完成.
-                    if(typeof img.width=='number' && img.width && img.height){//图片
+                    if(/^data/.test(img.src) || (typeof img.width=='number' && img.width && img.height)){//图片
                         setTimeout(function(){
                             if(aborted)return;
                             go('load',{
@@ -13386,6 +13410,12 @@ ImgOps | https://imgops.com/#b#`;
 
                 getBody(document).appendChild(maximizeTrigger);
 
+                container.querySelector("#galleryRotate").addEventListener('focus',function(e) {
+                    eleMaps['head-command-drop-list-others'].classList.add("focus");
+                });
+                container.querySelector("#galleryRotate").addEventListener('blur',function(e){
+                    eleMaps['head-command-drop-list-others'].classList.remove("focus");
+                });
                 container.querySelector("#galleryRotate").addEventListener('change',function(e) {
                     self.galleryRotate = e.target.value;
                     self.fitToScreen();
@@ -14704,9 +14734,9 @@ ImgOps | https://imgops.com/#b#`;
                 this._keyUpListener=this.keyUpListener.bind(this);
 
                 //插入动态生成的css数据。
-                this.globalSSheet.insertRule('.pv-gallery-sidebar-thumb-container{'+
+                _GM_addStyle('.pv-gallery-sidebar-thumb-container{'+
                                              ((isHorizontal ? 'width' : 'height') + ':'  + (isHorizontal ?  unsafeWindow.getComputedStyle(eleMaps['sidebar-thumbnails-container']).height : unsafeWindow.getComputedStyle(eleMaps['sidebar-thumbnails-container']).width)) +
-                                             '}',this.globalSSheet.cssRules.length);
+                                             '}');
 
                 this.forceRepaintTimes=0;
 
@@ -14804,7 +14834,7 @@ ImgOps | https://imgops.com/#b#`;
                 self.loadThumb();
             },
             rotateBigImg:function(){
-                this.img.style[support.cssTransform] = 'rotate(' + (this.galleryRotate || 0) + 'deg)';
+                if (this.img) this.img.style[support.cssTransform] = 'rotate(' + (this.galleryRotate || 0) + 'deg)';
             },
             showTips:function(content, time){
                 var tipsWords=this.eleMaps["tipsWords"];
@@ -16009,6 +16039,7 @@ ImgOps | https://imgops.com/#b#`;
                             return;
                         }
                     }
+                    if(!selectSpan && this.imgSpans.length)selectSpan=this.imgSpans[0];
                 }
                 this.select(selectSpan, true);
             },
@@ -16176,6 +16207,7 @@ ImgOps | https://imgops.com/#b#`;
             },
             show:function(reload){
                 this.shown=true;
+                this.addStyle();
                 galleryMode=true;
 
                 if (!reload) {
@@ -16727,26 +16759,39 @@ ImgOps | https://imgops.com/#b#`;
             },
             getAllValidImgs:function(newer){
                 var validImgs = [];
-                var imgs = getBody(document).getElementsByTagName('img'),
-                    container = document.querySelector('.pv-gallery-container'),
+                var container = document.querySelector('.pv-gallery-container'),
                     preloadContainer = document.querySelector('.pv-gallery-preloaded-img-container');
 
-                imgs = Array.prototype.slice.call(imgs);
-                arrayFn.forEach.call(getBody(document).querySelectorAll("iframe"),function(iframe){
-                    if (iframe.name == "pagetual-iframe") return;
-                    if (!iframe.src || (iframe.src && (iframe.src == "about:blank" || iframe.src.replace(/\/[^\/]*$/,"").indexOf(location.hostname) != -1))) {
-                        try{
-                            arrayFn.forEach.call(iframe.contentWindow.document.getElementsByTagName('img'),function(img){
-                                imgs.push(img);
-                            });
-                        }catch(e){
-                            debug(e.toString());
-                        }
-                    }
-                });
                 var bgReg=/.*url\(\s*["']?(.+?)["']?\s*\)([^'"]|$)/i;
-                var bgImgs=Array.from(getBody(document).querySelectorAll('*')).reduceRight((total, node) => {
-                    if(node.nodeName.toUpperCase() != "IMG" && (!node.className || !node.className.indexOf || node.className.indexOf("pv-")==-1)){
+                var imgs=Array.from(getBody(document).querySelectorAll('*')).reduceRight((total, node) => {
+                    if(/^img$/i.test(node.nodeName)){
+                        total.push(node);
+                    }else if(/^svg$/i.test(node.nodeName)){
+                        if (node.clientHeight != 0 && (!node.classList || !node.classList.contains("pagetual"))) {
+                            try {
+                                const xml = new XMLSerializer().serializeToString(node);
+                                const ImgBase64 = `data:image/svg+xml;base64,${window.btoa(unescape(encodeURIComponent(xml)))}`;
+                                node.src = ImgBase64;
+                                total.push(node);
+                            } catch(e) {
+                                debug(e);
+                            }
+                        }
+                    }else if(/^canvas$/i.test(node.nodeName)){
+                        if (node.clientHeight != 0) {
+                            try {
+                                if (!node.src) {
+                                    node.src = node.toDataURL("image/png");
+                                }
+                                total.push(node);
+                            } catch(e) {}
+                        }
+                        if (!node.src && node.dataset.src) {
+                            node.src = node.dataset.src;
+                            delete node.dataset.src;
+                            total.push(node);
+                        }
+                    }else if(!node.className || !node.className.indexOf || node.className.indexOf("pv-")==-1){
                         let prop = getComputedStyle(node).backgroundImage;
                         if (prop != "none") {
                             let match = bgReg.exec(prop);
@@ -16774,38 +16819,19 @@ ImgOps | https://imgops.com/#b#`;
                     }
                     return total;
                 }, []);
-                if(bgImgs)imgs=imgs.concat(bgImgs.reverse());
-                var svgImgs=Array.from(getBody(document).querySelectorAll('svg')).reduceRight((total, svg) => {
-                    if (svg.clientHeight != 0 && (!svg.classList || !svg.classList.contains("pagetual"))) {
-                        try {
-                            const xml = new XMLSerializer().serializeToString(svg);
-                            const ImgBase64 = `data:image/svg+xml;base64,${window.btoa(unescape(encodeURIComponent(xml)))}`;
-                            svg.src = ImgBase64;
-                            total.push(svg);
-                        } catch(e) {
-                            debug(e);
+                imgs = imgs.reverse();
+                arrayFn.forEach.call(getBody(document).querySelectorAll("iframe"),function(iframe){
+                    if (iframe.name == "pagetual-iframe") return;
+                    if (!iframe.src || (iframe.src && (iframe.src == "about:blank" || iframe.src.replace(/\/[^\/]*$/,"").indexOf(location.hostname) != -1))) {
+                        try{
+                            arrayFn.forEach.call(iframe.contentWindow.document.getElementsByTagName('img'),function(img){
+                                imgs.push(img);
+                            });
+                        }catch(e){
+                            debug(e.toString());
                         }
                     }
-                    return total;
-                }, []);
-                if(svgImgs)imgs=imgs.concat(svgImgs.reverse());
-                var canvasImgs=Array.from(getBody(document).querySelectorAll('canvas')).reduceRight((total, canvas) => {
-                    if (canvas.clientHeight != 0) {
-                        try {
-                            if (!canvas.src) {
-                                canvas.src = canvas.toDataURL("image/png");
-                            }
-                            total.push(canvas);
-                        } catch(e) {}
-                    }
-                    if (!canvas.src && canvas.dataset.src) {
-                        canvas.src = canvas.dataset.src;
-                        delete canvas.dataset.src;
-                        total.push(canvas);
-                    }
-                    return total;
-                }, []);
-                if(canvasImgs)imgs=imgs.concat(canvasImgs.reverse());
+                });
                 // 排除库里面的图片
                 imgs = imgs.filter(function(img){
                     if (img.parentNode) {
@@ -16823,8 +16849,11 @@ ImgOps | https://imgops.com/#b#`;
                 // 已经在图库里面的
                 var self = this;
                 imgs.forEach(function(img) {
-                    pretreatment(img);
-                    if(!img.src || (img.nodeName=='IMG' && img.getAttribute && !img.getAttribute("src"))) return;
+                    let isImg = /^IMG$/i.test(img.nodeName);
+                    if (isImg) {
+                        pretreatment(img);
+                    }
+                    if(!img.src || (isImg && img.getAttribute && !img.getAttribute("src"))) return;
                     if (newer && self._dataCache[img.src]) return;
 
                     var result = findPic(img);
@@ -16964,9 +16993,14 @@ ImgOps | https://imgops.com/#b#`;
             },
 
             addStyle:function(){
-                var style=document.createElement('style');
-                style.type='text/css';
-                style.textContent='\
+                if (GalleryC.style) {
+                    if (!GalleryC.style.parentNode) {
+                        GalleryC.style = _GM_addStyle(GalleryC.style.innerText);
+                        this.globalSSheet = GalleryC.style.sheet;
+                    }
+                    return;
+                }
+                GalleryC.style=_GM_addStyle('\
                  /*最外层容器*/\
                     .pv-gallery-container {\
                     position: fixed;\
@@ -16989,6 +17023,8 @@ ImgOps | https://imgops.com/#b#`;
                     box-sizing: border-box;\
                     line-height: 1.6;\
                     text-overflow: unset;\
+                    background-image: initial;\
+                    float: initial;\
                     }\
                     .pv-gallery-container * {\
                     font-size: 14px;\
@@ -16996,7 +17032,7 @@ ImgOps | https://imgops.com/#b#`;
                     flex-direction: row;\
                     }\
                     /*点击还原的工具条*/\
-                    .pv-gallery-maximize-trigger{\
+                    span.pv-gallery-maximize-trigger{\
                     position:fixed;\
                     bottom:15px;\
                     left:15px;\
@@ -17014,7 +17050,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-gallery-maximize-trigger:hover{\
                     opacity:0.9;\
                     }\
-                    .pv-gallery-maximize-trigger-close{\
+                    span.pv-gallery-maximize-trigger-close{\
                     display:inline-block;\
                     padding-left:10px;\
                     vertical-align:middle;\
@@ -17056,7 +17092,7 @@ ImgOps | https://imgops.com/#b#`;
                      .pv-gallery-maximize-container span>p{\
                      opacity: 0.6;\
                      }\
-                     .pv-gallery-head-command-close {\
+                     span.pv-gallery-head-command-close {\
                      position: fixed!important;\
                      right: 0!important;\
                      height: 29px!important;\
@@ -17123,7 +17159,7 @@ ImgOps | https://imgops.com/#b#`;
                     display: block;\
                     overflow-x: visible;\
                     overflow-y: auto;\
-                    text-wrap: nowrap;\
+                    white-space: nowrap;\
                     -ms-overflow-style: none;\
                     scrollbar-width: none;\
                     }\
@@ -17135,7 +17171,7 @@ ImgOps | https://imgops.com/#b#`;
                     vertical-align:middle;\
                     }\
                     /*顶栏左边*/\
-                    .pv-gallery-head-float-left{\
+                    span.pv-gallery-head-float-left{\
                     float:left;\
                     height:100%;\
                     text-align:left;\
@@ -17204,7 +17240,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-gallery-head-command > *{\
                     vertical-align:middle;\
                     }\
-                    .pv-gallery-head-command-close{\
+                    span.pv-gallery-head-command-close{\
                     position:absolute;\
                     top:0;\
                     width:40px;\
@@ -17237,13 +17273,13 @@ ImgOps | https://imgops.com/#b#`;
                     border-color:#757575;\
                     margin-left: 0px;\
                     }\
-                    .pv-gallery-head-command-collect-icon{\
+                    span.pv-gallery-head-command-collect-icon{\
                     display:inline-block;\
                     height:20px;\
                     width:20px;\
                     background:transparent url("' + prefs.icons.fivePointedStar + '") 0 0 no-repeat;\
                     }\
-                    .pv-gallery-head-left-lock-icon{\
+                    span.pv-gallery-head-left-lock-icon{\
                     display:inline-block;\
                     height:20px;\
                     width:20px;\
@@ -17424,11 +17460,11 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-gallery-sidebar-toggle-hide .pv-gallery-img-controler{\
                     opacity:0;\
                     }\
-                    .pv-gallery-img-controler-pre{\
+                    span.pv-gallery-img-controler-pre{\
                     background:rgba(70,70,70,0.8) url("'+prefs.icons.arrowLeft+'") no-repeat center;\
                     left:10px;\
                     }\
-                    .pv-gallery-img-controler-next{\
+                    span.pv-gallery-img-controler-next{\
                     background:rgba(70,70,70,0.8) url("'+prefs.icons.arrowRight+'") no-repeat center;\
                     right:10px;\
                     }\
@@ -17918,7 +17954,7 @@ ImgOps | https://imgops.com/#b#`;
                     border-top: 40px solid transparent;\
                     border-bottom: 40px solid transparent;\
                     }\
-                    .pv-gallery-sidebar-controler{\
+                    span.pv-gallery-sidebar-controler{\
                     cursor:pointer;\
                     position:absolute;\
                     background:rgba(255,255,255,0.1) no-repeat center;\
@@ -17938,19 +17974,19 @@ ImgOps | https://imgops.com/#b#`;
                     width:100%;\
                     height:36px;\
                     }\
-                    .pv-gallery-sidebar-controler-pre-h {\
+                    span.pv-gallery-sidebar-controler-pre-h {\
                     left: -40px;\
                     background-image: url("'+prefs.icons.arrowLeft+'");\
                     }\
-                    .pv-gallery-sidebar-controler-next-h {\
+                    span.pv-gallery-sidebar-controler-next-h {\
                     right: -40px;\
                     background-image: url("'+prefs.icons.arrowRight+'");\
                     }\
-                    .pv-gallery-sidebar-controler-pre-v {\
+                    span.pv-gallery-sidebar-controler-pre-v {\
                     top: -40px;\
                     background-image: url("'+prefs.icons.arrowTop+'");\
                     }\
-                    .pv-gallery-sidebar-controler-next-v {\
+                    span.pv-gallery-sidebar-controler-next-v {\
                     bottom: -40px;\
                     background-image: url("'+prefs.icons.arrowBottom+'");\
                     }\
@@ -17990,7 +18026,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-gallery-sidebar-thumbnails-container-left {\
                     padding-right:5px;\
                     }\
-                    .pv-gallery-sidebar-thumb-container {\
+                    span.pv-gallery-sidebar-thumb-container {\
                     display:inline-block;\
                     text-align: center;\
                     border:2px solid rgb(52,52,52);\
@@ -18023,7 +18059,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-gallery-sidebar-thumb-container:hover {\
                     border:2px solid rgb(57,149,211);\
                     }\
-                    .pv-gallery-sidebar-thumb_selected {\
+                    span.pv-gallery-sidebar-thumb_selected {\
                     border:2px solid rgb(229,59,62);\
                     }\
                     .pv-gallery-sidebar-thumb_selected-top {\
@@ -18038,7 +18074,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-gallery-sidebar-thumb_selected-left {\
                     left:5px;\
                     }\
-                    .pv-gallery-sidebar-thumb-loading{\
+                    span.pv-gallery-sidebar-thumb-loading{\
                     position:absolute;\
                     top:0;\
                     left:0;\
@@ -18072,11 +18108,10 @@ ImgOps | https://imgops.com/#b#`;
                     white-space:nowrap;\
                     background-color:red;\
                     }\
-                    ';
-                var head=document.head;
-                head.appendChild(style);
-                this.globalSSheet=style.sheet;
+                    ');
+                this.globalSSheet=GalleryC.style.sheet;
 
+                var head=document.head;
                 var style2=document.createElement('style');
                 this.thumbVisibleStyle=style2;
                 style2.type='text/css';
@@ -18446,11 +18481,13 @@ ImgOps | https://imgops.com/#b#`;
                 document.addEventListener('mouseup',this._clickOut,true);
             },
             addStyle:function(){
-                if(MagnifierC.style)return;
-                var style=document.createElement('style');
-                style.type='text/css';
-                MagnifierC.style=style;
-                style.textContent='\
+                if (MagnifierC.style) {
+                    if (!MagnifierC.style.parentNode) {
+                        MagnifierC.style = _GM_addStyle(MagnifierC.style.innerText);
+                    }
+                    return;
+                }
+                MagnifierC.style=_GM_addStyle('\
                     .pv-magnifier-container{\
                     position:absolute;\
                     padding:0;\
@@ -18467,8 +18504,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-magnifier-container_pause{\
                     border-color:red;\
                     }\
-                    ';
-                document.head.appendChild(style);
+                    ');
             },
             clickOut:function(e){
                 if(!this.magnifier.classList.contains("pv-magnifier-container_focus")){
@@ -19185,7 +19221,7 @@ ImgOps | https://imgops.com/#b#`;
                             if (i != allData.length - 1) {
                                 i++;
                                 imgData = allData[i];
-                                while (imgData && imgData.img && imgData.img.parentNode && imgData.img.parentNode.classList.contains("pv-pic-window-container")) {
+                                while (imgData && imgData.img && imgData.img.parentNode && (imgData.img.parentNode.classList.contains("pv-pic-window-container") || imgData.src == this.data.src || (imgData.src && /^data:/.test(imgData.src) && imgData.src.length < 250))) {
                                     i++;
                                     if (i == allData.length) return;
                                     imgData = allData[i];
@@ -19200,7 +19236,7 @@ ImgOps | https://imgops.com/#b#`;
                             if (i != 0) {
                                 i--;
                                 imgData = allData[i];
-                                while (imgData && imgData.img && imgData.img.parentNode && imgData.img.parentNode.classList.contains("pv-pic-window-container")) {
+                                while (imgData && imgData.img && imgData.img.parentNode && (imgData.img.parentNode.classList.contains("pv-pic-window-container") || imgData.src == this.data.src || (imgData.src && /^data:/.test(imgData.src) && imgData.src.length < 250))) {
                                     i--;
                                     if (i == -1) return;
                                     imgData = allData[i];
@@ -19226,13 +19262,17 @@ ImgOps | https://imgops.com/#b#`;
                 }
             },
             addStyle:function(){
-                if(ImgWindowC.style)return;
-                var style=document.createElement('style');
-                ImgWindowC.style=style;
-                style.textContent='\
+                if (ImgWindowC.style) {
+                    if (!ImgWindowC.style.parentNode) {
+                        ImgWindowC.style = _GM_addStyle(ImgWindowC.style.innerText);
+                    }
+                    return;
+                }
+                ImgWindowC.style=_GM_addStyle('\
                     .pv-pic-window-container {\
                     ' + (prefs.imgWindow.fixed ? 'position: fixed;' : 'position: absolute;') + '\
                     background-color: rgba(40,40,40,0.65);\
+                    background-image: initial;\
                     padding: 8px;\
                     border: 0;\
                     border-radius: 1px;\
@@ -19245,6 +19285,10 @@ ImgOps | https://imgops.com/#b#`;
                     box-shadow: 0 0 10px 5px rgba(0,0,0,0.35);\
                     box-sizing: content-box;\
                     display: initial;\
+                    }\
+                    .pv-pic-window-container span {\
+                    background-image: initial;\
+                    float: initial;\
                     }\
                     .pv-pic-window-transition-all{\
                     -webkit-transition: top 0.2s ease, left 0.2s ease;\
@@ -19340,7 +19384,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-pic-window-container_focus>.pv-pic-window-toolbar {\
                     display: block;\
                     }\
-                    .pv-pic-window-close {\
+                    span.pv-pic-window-close {\
                     cursor: pointer;\
                     position: absolute;\
                     right: 0px;\
@@ -19363,7 +19407,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-pic-window-container_focus>.pv-pic-window-close {\
                     display: block;\
                     }\
-                    .pv-pic-window-search {\
+                    span.pv-pic-window-search {\
                     cursor: pointer;\
                     position: absolute;\
                     right: 50px;\
@@ -19378,7 +19422,7 @@ ImgOps | https://imgops.com/#b#`;
                     background-color:#1771FF;\
                     display: none;\
                     }\
-                    .pv-pic-window-max {\
+                    span.pv-pic-window-max {\
                     cursor: pointer;\
                     position: absolute;\
                     right: 46px;\
@@ -19413,8 +19457,8 @@ ImgOps | https://imgops.com/#b#`;
                     margin-top: 20px;\
                     min-height: 20px;\
                     }\
-                    .pv-pic-window-pre,\
-                    .pv-pic-window-next{\
+                    span.pv-pic-window-pre,\
+                    span.pv-pic-window-next{\
                     -webkit-transition: opacity 0.3s ease;\
                     transition: opacity 0.3s ease;\
                     position: absolute;\
@@ -19426,11 +19470,11 @@ ImgOps | https://imgops.com/#b#`;
                     cursor: pointer;\
                     pointer-events: none;\
                     }\
-                    .pv-pic-window-pre {\
+                    span.pv-pic-window-pre {\
                     left: 8px;\
                     background-image: url("'+prefs.icons.arrowLeft+'");\
                     }\
-                    .pv-pic-window-next {\
+                    span.pv-pic-window-next {\
                     right: 8px;\
                     background-image: url("'+prefs.icons.arrowRight+'");\
                     }\
@@ -19474,7 +19518,7 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-pic-window-container>span.pv-pic-search-state:hover>svg{\
                     display: block;\
                     }\
-                    .pv-pic-search-state {\
+                    span.pv-pic-search-state {\
                     top: -10px;\
                     left: 8px;\
                     display: block;\
@@ -19498,7 +19542,7 @@ ImgOps | https://imgops.com/#b#`;
                     white-space: nowrap;\
                     overflow: hidden;\
                     }\
-                    .pv-pic-search-state>.pv-icon {\
+                    span.pv-pic-search-state>.pv-icon {\
                     width: 20px;\
                     height: 20px;\
                     vertical-align: middle;\
@@ -19584,13 +19628,13 @@ ImgOps | https://imgops.com/#b#`;
                     .pv-pic-window-container_focus .pv-pic-window-imgbox {\
                     box-shadow: 0 0 6px black;\
                     }\
-                    .pv-pic-window-container_focus .pv-pic-window-pic {\
+                    span.pv-pic-window-container_focus .pv-pic-window-pic {\
                     background: linear-gradient( 45deg, rgba(255, 255, 255, 0.4) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.4) 100% ), linear-gradient( 45deg, rgba(255, 255, 255, 0.4) 25%, transparent 25%, transparent 75%, rgba(255, 255, 255, 0.4) 75%, rgba(255, 255, 255, 0.4) 100% );\
                     background-size: 20px 20px;\
                     background-position: 0 0, 10px 10px;\
                     }\
-                    .pv-pic-window-tb-tool,\
-                    .pv-pic-window-tb-command{\
+                    span.pv-pic-window-tb-tool,\
+                    span.pv-pic-window-tb-command{\
                     box-sizing:content-box;\
                     -moz-box-sizing:content-box;\
                     -webkit-box-sizing:content-box;\
@@ -19618,29 +19662,29 @@ ImgOps | https://imgops.com/#b#`;
                     box-shadow: inset 0 21px 0 rgba(255,255,255,0.3) ,inset 0 -21px 0 rgba(0,0,0,0.3);\
                     border-left:2px solid #1771FF;\
                     }\
-                    .pv-pic-window-tb-hand {\
+                    span.pv-pic-window-tb-hand {\
                     background-image: url("'+prefs.icons.hand+'");\
                     }\
-                    .pv-pic-window-tb-rotate {\
+                    span.pv-pic-window-tb-rotate {\
                     background-image: url("'+prefs.icons.rotate+'");\
                     }\
-                    .pv-pic-window-tb-zoom {\
+                    span.pv-pic-window-tb-zoom {\
                     background-image: url("'+prefs.icons.zoom+'");\
                     }\
-                    .pv-pic-window-tb-flip-horizontal {\
+                    span.pv-pic-window-tb-flip-horizontal {\
                     background-image: url("'+prefs.icons.flipHorizontal+'");\
                     }\
-                    .pv-pic-window-tb-flip-vertical {\
+                    span.pv-pic-window-tb-flip-vertical {\
                     background-image: url("'+prefs.icons.flipVertical+'");\
                     }\
-                    .pv-pic-window-tb-compare {\
+                    span.pv-pic-window-tb-compare {\
                     background-image: url("'+prefs.icons.compare+'");\
                     }\
                     .pv-pic-window-tb-tool-badge-container {\
                     display: block;\
                     position: relative;\
                     }\
-                    .pv-pic-window-tb-tool-badge {\
+                    span.pv-pic-window-tb-tool-badge {\
                     position: absolute;\
                     top: -3px;\
                     right: 1px;\
@@ -19652,7 +19696,7 @@ ImgOps | https://imgops.com/#b#`;
                     opacity: 0.5;\
                     color: black;\
                     }\
-                    .pv-pic-window-tb-tool-extend-menu{\
+                    span.pv-pic-window-tb-tool-extend-menu{\
                     position:absolute;\
                     top:0;\
                     margin-left:-1px;\
@@ -19718,7 +19762,7 @@ ImgOps | https://imgops.com/#b#`;
                     left:0;\
                     z-index: '+prefs.imgWindow.zIndex+';\
                     }\
-                    .pv-pic-window-rotate-indicator{\
+                    span.pv-pic-window-rotate-indicator{\
                     display:none;\
                     position:fixed;\
                     width:250px;\
@@ -19728,7 +19772,7 @@ ImgOps | https://imgops.com/#b#`;
                     margin-left:-135px;\
                     background:transparent url("'+ prefs.icons.rotateIndicatorBG +'") no-repeat center;\
                     }\
-                    .pv-pic-window-rotate-indicator-pointer{\
+                    span.pv-pic-window-rotate-indicator-pointer{\
                     display:block;\
                     margin-left:auto;\
                     margin-right:auto;\
@@ -19760,8 +19804,7 @@ ImgOps | https://imgops.com/#b#`;
                     }\
                     .pv-pic-window-container::-webkit-scrollbar { width: 0 !important }\
                     .pv-pic-window-container { -ms-overflow-style: none;overflow: -moz-scrollbars-none; }\
-                    ';
-                document.head.appendChild(style);
+                    ');
             },
 
             firstOpen:function(){
@@ -19935,26 +19978,26 @@ ImgOps | https://imgops.com/#b#`;
                         self.zoom(self.getRotatedImgCliSize(size).w/self.imgNaturalSize.w);
                     }
                 }
-                let padding = 50;
+                let padding1 = Math.min(180, wSize.h>>2, wSize.w>>2), padding2 = 50;
                 if(imgWindow.offsetWidth/imgWindow.offsetHeight>wSize.w/wSize.h){
                     //宽条，上下半屏
                     maxWidth = wSize.w;
                     if(posY > wSize.h / 2){
                         //上
-                        maxHeight=posY-padding*2;
+                        maxHeight=posY-padding1-padding2;
                         resizeWithLimit();
-                        imgWindow.style.top=posY - imgWindow.offsetHeight - padding + scrolled.y +'px';
+                        imgWindow.style.top=posY - imgWindow.offsetHeight - padding1 + scrolled.y +'px';
                     }else{
                         //下
-                        maxHeight=wSize.h-posY-padding*2;
+                        maxHeight=wSize.h-posY-padding1-padding2;
                         resizeWithLimit();
-                        imgWindow.style.top=posY + padding + scrolled.y +'px';
+                        imgWindow.style.top=posY + padding1 + scrolled.y +'px';
                     }
                     let left=(wSize.w - imgWindow.offsetWidth) / 2;
-                    let maxLeft=posX+padding*2;
+                    let maxLeft=posX+padding1+padding2;
                     if(left>maxLeft)left=maxLeft;
                     else {
-                        let minLeft=posX-imgWindow.offsetWidth-padding*2;
+                        let minLeft=posX-imgWindow.offsetWidth-padding1-padding2;
                         if(left<minLeft)left=minLeft;
                     }
                     imgWindow.style.left=left + scrolled.x +'px';
@@ -19963,20 +20006,20 @@ ImgOps | https://imgops.com/#b#`;
                     maxHeight = wSize.h;
                     if(posX > wSize.w / 2){
                         //左
-                        maxWidth=posX-padding*2;
+                        maxWidth=posX-padding1-padding2;
                         resizeWithLimit();
-                        imgWindow.style.left=posX - imgWindow.offsetWidth - padding + scrolled.x +'px';
+                        imgWindow.style.left=posX - imgWindow.offsetWidth - padding1 + scrolled.x +'px';
                     }else{
                         //右
-                        maxWidth=wSize.w-posX-padding*2;
+                        maxWidth=wSize.w-posX-padding1-padding2;
                         resizeWithLimit();
-                        imgWindow.style.left=posX + padding + scrolled.x +'px';
+                        imgWindow.style.left=posX + padding1 + scrolled.x +'px';
                     }
                     let top=(wSize.h - imgWindow.offsetHeight) / 2;
-                    let maxTop=posY+padding*2;
+                    let maxTop=posY+padding1+padding2;
                     if(top>maxTop)top=maxTop;
                     else {
-                        let minTop=posY-imgWindow.offsetHeight-padding*2;
+                        let minTop=posY-imgWindow.offsetHeight-padding1-padding2;
                         if(top<minTop)top=minTop;
                     }
                     imgWindow.style.top=top + scrolled.y +'px';
@@ -21166,11 +21209,13 @@ ImgOps | https://imgops.com/#b#`;
                 }
             },
             addStyle:function(){
-                if(LoadingAnimC.styleAdded)return;
-                LoadingAnimC.styleAdded=true;
-                var style=document.createElement('style');
-                style.type='text/css';
-                style.textContent='\
+                if (LoadingAnimC.style) {
+                    if (!LoadingAnimC.style.parentNode) {
+                        LoadingAnimC.style = _GM_addStyle(LoadingAnimC.style.innerText);
+                    }
+                    return;
+                }
+                LoadingAnimC.style=_GM_addStyle('\
                 .pv-loading-container {\
                 position: absolute;\
                 z-index:999999997;\
@@ -21227,8 +21272,7 @@ ImgOps | https://imgops.com/#b#`;
                 .pv-loading-container_error .pv-loading-retry{\
                 display:block;\
                 }\
-                ';
-                document.head.appendChild(style);
+                ');
             },
             remove:function(){
                 if(!this.removed){
@@ -21377,6 +21421,7 @@ ImgOps | https://imgops.com/#b#`;
                                 uniqueImgWin.imgWindow.style.opacity = 0;
                             }else{
                                 if (prefs.floatBar.globalkeys.previewFollowMouse) {
+                                    uniqueImgWin.following=true;
                                     uniqueImgWin.followPos(uniqueImgWinInitX, uniqueImgWinInitY);
                                 } else {
                                     uniqueImgWin.center(true,true);
@@ -21530,11 +21575,16 @@ ImgOps | https://imgops.com/#b#`;
                 this._scrollHandler=this.scrollHandler.bind(this);
             },
             addStyle:function(){
-                var style=document.createElement('style');
-                style.type='text/css';
-                style.textContent='\
+                if (FloatBarC.style) {
+                    if (!FloatBarC.style.parentNode) {
+                        FloatBarC.style = _GM_addStyle(FloatBarC.style.innerText);
+                    }
+                    return;
+                }
+                FloatBarC.style=_GM_addStyle('\
                     #pv-float-bar-container {\
                     position: absolute;\
+                    background-image: initial;\
                     top: 0px;\
                     left: 0px;\
                     z-index:9999999998;\
@@ -21607,8 +21657,7 @@ ImgOps | https://imgops.com/#b#`;
                     #pv-float-bar-container .pv-float-bar-button-download {\
                     background-image:url("'+ prefs.icons.download +'");\
                     }\
-                    ';
-                document.head.appendChild(style);
+                    ');
             },
             start:function(data){
 
@@ -21683,20 +21732,25 @@ ImgOps | https://imgops.com/#b#`;
                     //this.buttons['current'].style.removeProperty('display');
                 }
             },
-            setPosition:function(){
+            setPosition: function() {
                 //如果图片被删除了，或者隐藏了。
-                if(this.data.img.offsetWidth==0){
+                if (this.data.img.offsetWidth == 0) {
                     return true;
-                };
-                var targetPosi=getContentClientRect(this.data.img);
-                if (this.data.img.parentNode && this.data.img.parentNode.scrollHeight > 20 && this.data.img.parentNode.scrollWidth > 20) {
-                    var paPosi=getContentClientRect(this.data.img.parentNode);
+                }
+                var targetPosi = getContentClientRect(this.data.img);
+                var pa = this.data.img.parentNode;
+                if (pa && pa.scrollHeight > 20 && pa.scrollWidth > 20) {
+                    var paPosi=getContentClientRect(pa);
                     if (paPosi.width > 20 && paPosi.height > 20) {
-                        if (paPosi.width < targetPosi.width) {
-                            targetPosi.left = paPosi.left;
+                        if (this.data.img.offsetTop != 0) {
+                            if (paPosi.height < targetPosi.height) {
+                                targetPosi.top = paPosi.top;
+                            }
                         }
-                        if (paPosi.height < targetPosi.height) {
-                            targetPosi.top = paPosi.top;
+                        if (this.data.img.offsetLeft != 0) {
+                            if (paPosi.width < targetPosi.width) {
+                                targetPosi.left = paPosi.left;
+                            }
                         }
                     }
                 }
@@ -21711,7 +21765,7 @@ ImgOps | https://imgops.com/#b#`;
 
 
                 var scrolled=getScrolled();
-                targetPosi.top -= bodyPosi.top + scrolled.y;
+                targetPosi.top -= bodyPosi.top + scrolled.y - (parseInt(unsafeWindow.getComputedStyle(document.documentElement).marginTop) || 0);
                 targetPosi.left -= bodyPosi.left + scrolled.x;
 
                 var fbs = this.floatBar.style;
@@ -21815,6 +21869,7 @@ ImgOps | https://imgops.com/#b#`;
             show:function(){
                 if(this.setPosition())return;
                 this.shown=true;
+                this.addStyle();
                 this.setButton();
                 if(prefs.floatBar.position!=="hide"){
                     this.floatBar.style.transition="";
@@ -22131,7 +22186,7 @@ ImgOps | https://imgops.com/#b#`;
                 if(src)type='tpRule';
             }
 
-            if(!src && iPASrc){//链接可能是一张图片...
+            if(/^IMG$/i.test(img.nodeName) && !src && iPASrc){//链接可能是一张图片...
                 if(iPASrc!=img.src && /\.(jpg|jpeg|png|gif|bmp)(\?[^\?]*)?$/i.test(iPASrc)){
                     src=iPASrc;
                 }
@@ -22247,11 +22302,8 @@ ImgOps | https://imgops.com/#b#`;
                             if (site.enabled != false && (!site.url || toRE(site.url).test(_URL))) {
                                 if(site.url){
                                     if(site.css){
-                                        var style = document.createElement('style');
-                                        style.type = 'text/css';
+                                        var style = _GM_addStyle(site.css);
                                         style.id = 'gm-picviewer-site-style';
-                                        style.textContent = site.css;
-                                        document.head.appendChild(style);
                                     }
                                     if(site.xhr){
                                         self._xhr=site.xhr;
@@ -23234,6 +23286,27 @@ ImgOps | https://imgops.com/#b#`;
             }
         }
 
+        function createEleFromJson(json) {
+            let collection = document.createDocumentFragment();
+            json.forEach(data => {
+                let ele = document.createElement(data.node);
+                if (data.text) {
+                    ele.innerText = data.text;
+                }
+                if (data.attr) {
+                    Object.keys(data.attr).forEach(key => {
+                        ele.setAttribute(key, data.attr[key]);
+                    });
+                }
+                if (data.children) {
+                    let children = createEleFromJson(data.children);
+                    ele.appendChild(children);
+                }
+                collection.appendChild(ele);
+            });
+            return collection;
+        }
+
         window.addEventListener('message', handleMessage, true);
 
         addPageScript();
@@ -23310,7 +23383,7 @@ ImgOps | https://imgops.com/#b#`;
         for(let key in editSitesFunc){
             editSitesName[key]=key;
         }
-        var newsInited = false, news = "";
+        var newsInited = false, newsNode = null;
 
         initLang();
         var customLangOption={
@@ -23346,7 +23419,9 @@ ImgOps | https://imgops.com/#b#`;
                 "#pv-prefs input.order { width: 250px; }",
                 "#pv-prefs .config_header>a { border-bottom: solid 2px; }",
                 "#pv-prefs .config_header>a:hover { color: #9f9f9f; }",
-                "#pv-prefs .nav-tabs { text-wrap: nowrap; width: 95vw; display: flex; overflow-x: auto; overflow-y: visible; }",
+                "#pv-prefs .section_header_holder { padding-right: 10px; }",
+                "#pv-prefs textarea { width: 100%; }",
+                "#pv-prefs .nav-tabs { white-space: nowrap; width: fit-content; max-width: 100%; margin: 20 auto; display: flex; overflow-x: auto; overflow-y: visible; }",
             ].join('\n'),
             fields: {
                 // 浮动工具栏
@@ -23913,7 +23988,7 @@ ImgOps | https://imgops.com/#b#`;
                     let closeBtn=doc.querySelector("#"+this.id+"_closeBtn");
                     let resetLink=doc.querySelector("#"+this.id+"_resetLink");
                     let customInput=doc.querySelector("#"+this.id+"_field_customRules");
-                    customInput.style.height="500px";
+                    customInput.style.height="188px";
                     saveBtn.textContent=i18n("saveBtn");
                     saveBtn.title=i18n("saveBtnTips");
                     closeBtn.textContent=i18n("closeBtn");
@@ -23924,16 +23999,91 @@ ImgOps | https://imgops.com/#b#`;
                     if(searchData && searchData.value==""){
                         searchData.value=defaultSearchData;
                     }
-                    let header=doc.getElementById(this.id+"_header");
-                    if(header && header.children.length==1){
-                        if (!newsInited) {
-                            news = await GM_fetch(`https://www.hoothin.com/news.php?from=pvcep&lang=${lang}`).then(response => response.text()).catch(e => {});
-                            newsInited = true;
+                    let about = doc.getElementById(this.id + "_section_4");
+                    if (about) {
+                        if (!newsNode) {
+                            newsNode = document.createElement("div");
+                            let newsEles = createEleFromJson([
+                                {
+                                    node: "div",
+                                    text: "Made with ❤️ by ",
+                                    attr: {
+                                        style: "width: calc(100% - 8px); text-align: center;"
+                                    },
+                                    children: [
+                                        {
+                                            node: "a",
+                                            text: "Hoothin",
+                                            attr: {
+                                                "href": "mailto:rixixi@gmail.com"
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    node: "img",
+                                    attr: {
+                                        src: "https://s2.loli.net/2023/02/06/afTMxeASm48z5vE.jpg",
+                                        style: "width: 100%; margin-top: 5px; max-height: 180px; display: none;",
+                                        onload: "this.style.display=''"
+                                    }
+                                },
+                                {
+                                    node: "div",
+                                    attr: {
+                                        style: "width: 100%; display: flex; align-items: center; justify-content: center; margin-top: 5px; font-size: 14px;"
+                                    },
+                                    children: [
+                                        {
+                                            node: "img",
+                                            attr: {
+                                                src: "https://ko-fi.com/favicon-32x32.png",
+                                                style: "margin-right: 5px; height: 25px; display: none;",
+                                                onload: "this.style.display=''"
+                                            }
+                                        },
+                                        {
+                                            node: "a",
+                                            text: "Ko-fi",
+                                            attr: {
+                                                href: "https://ko-fi.com/hoothin",
+                                                style: "margin-right: 10px;"
+                                            }
+                                        },
+                                        {
+                                            node: "img",
+                                            attr: {
+                                                src: "https://static.afdiancdn.com/favicon.ico",
+                                                style: "margin-right: 5px; height: 20px; display: none;",
+                                                onload: "this.style.display=''"
+                                            }
+                                        },
+                                        {
+                                            node: "a",
+                                            text: "爱发电",
+                                            attr: {
+                                                href: "https://afdian.net/@hoothin"
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]);
+                            newsNode.style.padding = "5px";
+                            newsNode.appendChild(newsEles);
+                            about.appendChild(newsNode);
                         }
-                        if (!news) return;
-                        let newsEle = document.createElement("div");
-                        newsEle.innerHTML = createHTML(news);
-                        header.appendChild(newsEle);
+                        if (!newsInited) {
+                            let news = await GM_fetch(`https://hoothin.com/scripts/pvcep/${lang}`).then(response => response.json()).catch(e => {});
+                            newsInited = true;
+                            if (!news) return;
+                            let newsEles = createEleFromJson(news);
+                            if (newsEles && newsEles.childElementCount) {
+                                if (newsNode) about.removeChild(newsNode);
+                                newsNode = document.createElement("div");
+                                newsNode.appendChild(newsEles);
+                            }
+                        }
+                        about.appendChild(newsNode);
                     }
                 },
                 save: function() {

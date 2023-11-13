@@ -768,12 +768,10 @@ var siteInfo = [
  },
  getExtSrc: function() {
     let newsrc = "";
-    if (this.id == "thumbnail-container") {
+    if (this.id == "thumbnail-container" && this.children[0].hasAttribute("loaded")) {
         let img = this.querySelector('img');
         if (!img) return;
         newsrc = img.src;
-    } else if (this.parentNode && this.parentNode.className == "ytp-inline-preview-ui") {
-        newsrc = this.parentNode.parentNode.querySelector(".ytp-cued-thumbnail-overlay-image").style.backgroundImage.replace(/url\("(.*)"\)/,"$1");
     }
     return newsrc.replace(/\?.*$/i,"");
  },
@@ -1309,8 +1307,8 @@ var siteInfo = [
 {
  name: "煎蛋",
  url: /^https:\/\/jandan\.net\//,
- r: /\/(thumb\d+|mw\d+)\//,
- s: "/large/"
+ r: [/\/(thumb\d+|mw\d+)\//, /!square/],
+ s: ["/large/", ""]
 },
 {
  name:"辉夜白兔",

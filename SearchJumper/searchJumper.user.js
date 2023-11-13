@@ -4,7 +4,7 @@
 // @name:zh-TW   搜尋醬
 // @name:ja      検索ちゃん - SearchJumper
 // @namespace    hoothin
-// @version      1.6.30.9
+// @version      1.7.8
 // @description  Assistant that assists with the seamless transition between search engines, providing the ability to swiftly navigate to any platform and conduct searches effortlessly. Additionally, it allows for the selection of text, images, or links to be searched on any search engine with a simple right-click or by utilizing a range of menus and shortcuts.
 // @description:zh-CN  高效搜索辅助，在搜索时一键切换搜索引擎，支持划词右键搜索、页内关键词查找与高亮、可视化操作模拟、高级自定义等
 // @description:zh-TW  高效搜尋輔助，在搜尋時一鍵切換搜尋引擎，支援劃詞右鍵搜尋、頁內關鍵詞查找與高亮、可視化操作模擬、高級自定義等
@@ -167,11 +167,6 @@
             type: "Search",
             icon: "search",
             sites: [ {
-                name: "🔍 Google",
-                url: "https://www.google.com/search?q=%s&ie=utf-8&oe=utf-8",
-                match: "https://www\\.google\\..*/search",
-                icon: "0"
-            }, {
                 name: "Bing",
                 url: "https://www.bing.com/search?q=%s",
                 match: "^https://(www|cn|global)\\.bing\\.com/search"
@@ -193,8 +188,9 @@
             selectTxt: true,
             openInNewTab: true,
             sites: [ {
-                name: "Google ",
-                url: "[\"Google\"]"
+                name: "Google",
+                url: "https://www.google.com/search?q=%s&ie=utf-8&oe=utf-8",
+                match: "https://www\\.google\\..*/search",
             }, {
                 name: "Wikipedia ",
                 url: "[\"Wikipedia\"]"
@@ -233,7 +229,7 @@
                 url: "https://www.google.com/searchbyimage?sbisrc=cr_1_0_0&image_url=%T"
             }, {
                 name: "Google translate image",
-                url: "https://translate.google.com/?op=images#p{input#ucj-11=%i}"
+                url: "https://translate.google.com/?op=images#p{input[accept^\\=\"image\"]=%i}"
             }, {
                 name: "SauceNAO",
                 url: "https://saucenao.com/search.php?db=999&url=%t"
@@ -408,6 +404,8 @@
         initShow: false,
         alwaysShow: false,
         customSize: 100,
+        tilesZoom: 100,
+        tipsZoom: 100,
         typeOpenTime: 250,
         longPressTime: 500,
         noIcons: false,
@@ -453,7 +451,7 @@
         expandType: false,
         rightMouse: true,
         shiftLastUsedType: true,
-        mouseLeaveToHide: true,
+        mouseLeaveToHide: false,
         currentTypeFirst: true,
         switchSitesPreKey: 'ArrowLeft',
         switchSitesNextKey: 'ArrowRight',
@@ -502,6 +500,7 @@
                         editBtn: '编辑查找文字',
                         emptyBtn: '清空查找文字',
                         copyInPageBtn: '复制查找文字',
+                        wordModeBtn: '单词模式',
                         copyEleBtn: '复制选中元素',
                         maxEleBtn: '展开选中元素',
                         minEleBtn: '收起选中元素',
@@ -605,6 +604,7 @@
                         editBtn: '編輯查找文字',
                         emptyBtn: '清空查找文字',
                         copyInPageBtn: '複製查找文字',
+                        wordModeBtn: '單詞模式',
                         copyEleBtn: '複製選中元素',
                         maxEleBtn: '展開選中元素',
                         minEleBtn: '收起選中元素',
@@ -707,6 +707,7 @@
                         editBtn: 'Edit search text',
                         emptyBtn: 'Empty search text',
                         copyInPageBtn: 'Copy search text',
+                        wordModeBtn: 'Word mode',
                         copyEleBtn: 'Copy selected elements',
                         maxEleBtn: 'Expand selected elements',
                         minEleBtn: 'Collapse selected elements',
@@ -888,6 +889,8 @@
         var _unsafeWindow = (typeof unsafeWindow == 'undefined') ? window : unsafeWindow;
         if (_unsafeWindow.searchJumperInited) return;
         _unsafeWindow.searchJumperInited = true;
+        if (!_unsafeWindow.searchJumperAddons) _unsafeWindow.searchJumperAddons = [];
+
         var storage = {
             supportGM: typeof GM_getValue == 'function' && typeof GM_getValue('a', 'b') != 'undefined',
             supportGMPromise: typeof GM != 'undefined' && typeof GM.getValue == 'function' && typeof GM.getValue('a','b') != 'undefined',
@@ -1105,8 +1108,12 @@
         function inputActive(doc) {
             let activeEl = getActiveElement(doc);
             if (activeEl &&
-                (/INPUT|TEXTAREA/i.test(activeEl.nodeName) ||
-                 activeEl.contentEditable == 'true')) {
+                ((/INPUT|TEXTAREA/i.test(activeEl.nodeName) &&
+                  activeEl.getAttribute("aria-readonly") != "true"
+                 ) ||
+                 activeEl.contentEditable == 'true'
+                )
+               ) {
                 return true;
             } else {
                 while (activeEl && activeEl.nodeName) {
@@ -1322,6 +1329,8 @@
         class SearchBar {
             constructor() {
                 this.scale = searchData.prefConfig.customSize / 100;
+                this.tilesZoom = searchData.prefConfig.tilesZoom / 100;
+                this.tipsZoom = searchData.prefConfig.tipsZoom / 100;
                 cssText = `
                  #search-jumper {
                      font-size: 16px;
@@ -1499,6 +1508,7 @@
                      margin: 20px;
                      pointer-events: none;
                      text-shadow: 0 0 3px black;
+                     background-image: initial;
                  }
                  #search-jumper-alllist>.dayInAll {
                      left: 0;
@@ -1637,10 +1647,11 @@
                      flex-direction: column;
                  }
                  #search-jumper.funcKeyCall>.search-jumper-searchBar>.search-jumper-type {
-                     height: ${searchData.prefConfig.minPopup ? '24px' : 'auto'}!important;
-                     width: ${searchData.prefConfig.minPopup ? 24 : (280 * this.scale)}px!important;
-                     max-width: unset;
-                     max-height: ${108 * this.scale + 10}px;
+                     height: ${searchData.prefConfig.minPopup ? (24 * this.tilesZoom + 'px') : 'auto'}!important;
+                     max-width: ${searchData.prefConfig.minPopup ? (24 * this.tilesZoom) : ((40 * this.tilesZoom) * (searchData.prefConfig.numPerLine || 7) * this.tilesZoom)}px!important;
+                     width: auto!important;
+                     width: max-content!important;
+                     max-height: ${108 * this.tilesZoom + 10}px;
                      flex-wrap: wrap!important;
                      flex-direction: row;
                      padding: 5px;
@@ -1672,7 +1683,7 @@
                  }
                  #search-jumper.funcKeyCall:not(.targetInput)>.search-jumper-searchBar>.search-jumper-type {
                      height: auto!important;
-                     width: ${280 * this.scale}px!important;
+                     width: ${40 * (searchData.prefConfig.numPerLine || 7) * this.tilesZoom}px!important;
                  }
                  #search-jumper.funcKeyCall>.search-jumper-searchBar>.search-jumper-type>a.search-jumper-btn {
                      visibility: visible;
@@ -1686,7 +1697,9 @@
                  ` : ''}
                  #search-jumper.funcKeyCall>.search-jumper-searchBar>.search-jumper-type:hover {
                      height: auto!important;
-                     width: ${280 * this.scale}px!important;
+                     width: auto!important;
+                     width: max-content!important;
+                     max-width: ${40 * (searchData.prefConfig.numPerLine || 7) * this.tilesZoom}px!important;
                  }
                  #search-jumper.funcKeyCall>.search-jumper-searchBar>.search-jumper-type::-webkit-scrollbar {
                      width: 0 !important;
@@ -1708,6 +1721,7 @@
                  }
                  .search-jumper-left:not(.search-jumper-showall) {
                      width: initial;
+                     width: -webkit-fill-available;
                  }
                  .search-jumper-right {
                      left: unset;
@@ -1808,6 +1822,15 @@
                      min-width: ${32 * this.scale}px;
                      min-height: ${32 * this.scale}px;
                      text-align: center;
+                     background-image: initial;
+                 }
+                 #search-jumper.funcKeyCall .search-jumper-btn {
+                     padding: ${1 * this.tilesZoom}px!important;
+                     margin: ${3 * this.tilesZoom}px!important;
+                     width: ${32 * this.tilesZoom}px;
+                     height: ${32 * this.tilesZoom}px;
+                     min-width: ${32 * this.tilesZoom}px;
+                     min-height: ${32 * this.tilesZoom}px;
                  }
                  a.search-jumper-btn:not(.search-jumper-word)>span {
                      position: absolute;
@@ -1821,6 +1844,9 @@
                      font-weight: normal;
                      opacity: 0.8;
                  }
+                 #search-jumper.funcKeyCall a.search-jumper-btn:not(.search-jumper-word)>span {
+                     font-size: ${12 * this.tilesZoom}px;
+                 }
                  .search-jumper-type>a.search-jumper-btn.historySite {
                      box-shadow: 0px 0px 8px 0px #00000080;
                  }
@@ -1829,6 +1855,10 @@
                      height: ${32 * this.scale}px;
                      border: unset;
                  }
+                 #search-jumper.funcKeyCall .search-jumper-btn>img {
+                     width: ${32 * this.tilesZoom}px;
+                     height: ${32 * this.tilesZoom}px;
+                 }
                  .search-jumper-btn>b {
                      line-height: ${32 * this.scale}px;
                      font-size: ${14 * this.scale}px;
@@ -1836,6 +1866,10 @@
                      color: white;
                      opacity: 0.9;
                      text-shadow: 0 0 1px #d9d9d9cc;
+                 }
+                 #search-jumper.funcKeyCall .search-jumper-btn>b {
+                     line-height: ${32 * this.tilesZoom}px;
+                     font-size: ${14 * this.tilesZoom}px;
                  }
                  .search-jumper-btn:hover>b {
                      opacity: 1;
@@ -1850,6 +1884,11 @@
                      font-size: ${30 * this.scale}px;
                      color: wheat;
                      display: none;
+                 }
+                 #search-jumper.funcKeyCall .search-jumper-btn>div {
+                     line-height: ${32 * this.tilesZoom}px;
+                     border-radius: ${20 * this.tilesZoom}px;
+                     font-size: ${30 * this.tilesZoom}px;
                  }
                  .search-jumper-isInPage .search-jumper-btn>div,
                  .search-jumper-isTargetImg .search-jumper-btn>div,
@@ -1871,34 +1910,16 @@
                      80%  {opacity: 0;}
                      100% {opacity: 0;}
                  }
-                 .searchJumper-loading {
-                     animation-name: changeScale;
-                     animation-duration: 2.5s;
-                     animation-iteration-count: infinite;
-                 }
-                 @keyframes changeScale {
-                     0% {
-                         -webkit-transform:rotate(0deg) scale(1);
-                         -moz-transform:rotate(0deg) scale(1);
-                         transform:rotate(0deg) scale(1);
-                     }
-                     50% {
-                         -webkit-transform:rotate(180deg) scale(1.5);
-                         -moz-transform:rotate(180deg) scale(1.5);
-                         transform:rotate(180deg) scale(1.5);
-                     }
-                     100% {
-                         -webkit-transform:rotate(360deg) scale(1);
-                         -moz-transform:rotate(360deg) scale(1);
-                         transform:rotate(360deg) scale(1);
-                     }
-                 }
                  .search-jumper-logoBtnSvg {
                      width: ${32 * this.scale}px;
                      height: ${32 * this.scale}px;
                      overflow: hidden;
                      vertical-align: top;
                      cursor: grab;
+                 }
+                 #search-jumper.funcKeyCall .search-jumper-logoBtnSvg {
+                     height: ${32 * this.tilesZoom}px;
+                     width: ${32 * this.tilesZoom}px;
                  }
                  .search-jumper-type.search-jumper-needInPage,
                  .search-jumper-type.search-jumper-targetImg,
@@ -1980,6 +2001,15 @@
                      min-height: ${this.scale * 40}px;
                      min-width: ${this.scale * 40}px;
                      ${searchData.prefConfig.noAni ? "" : `transition:width ${searchData.prefConfig.typeOpenTime}ms ease, height ${searchData.prefConfig.typeOpenTime}ms;`}
+                 }
+                 #search-jumper.funcKeyCall .search-jumper-type,
+                 #search-jumper.funcKeyCall .search-jumper-logo {
+                     border-radius: ${20 * this.tilesZoom}px!important;
+                     height: ${40 * this.tilesZoom}px;
+                     width: ${40 * this.tilesZoom}px;
+                     max-height: ${this.tilesZoom * 40}px;
+                     min-height: ${this.tilesZoom * 40}px;
+                     min-width: ${this.tilesZoom * 40}px;
                  }
                  .search-jumper-right>.searchJumperNavBar {
                      right: unset;
@@ -2116,6 +2146,15 @@
                      letter-spacing: 0px;
                      text-shadow: unset;
                  }
+                 #search-jumper.funcKeyCall .search-jumper-word {
+                     border-radius: ${20 * this.tilesZoom}px!important;
+                     font-size: ${14 * this.tilesZoom}px;
+                     line-height: ${32 * this.tilesZoom}px;
+                     width: ${32 * this.tilesZoom}px;
+                     height: ${32 * this.tilesZoom}px;
+                     min-width: ${32 * this.tilesZoom}px;
+                     min-height: ${32 * this.tilesZoom}px;
+                 }
                  .search-jumper-word:hover {
                      font-weight: bold;
                      text-shadow: 0px 0px 5px #d0d0d0;
@@ -2135,11 +2174,16 @@
                      line-height: unset;
                      text-align: center;
                      text-shadow: 0 0 0.7px #787878dd;
+                     background-image: initial;
                  }
                  .search-jumper-type img {
                      width: ${32 * this.scale}px;
                      height: ${32 * this.scale}px;
                      margin-top: unset;
+                 }
+                 #search-jumper.funcKeyCall .search-jumper-type img {
+                     width: ${32 * this.tilesZoom}px;
+                     height: ${32 * this.tilesZoom}px;
                  }
                  .funcKeyCall>.search-jumper-tips {
                      position: absolute;
@@ -2148,9 +2192,9 @@
                      z-index: 2147483647;
                      pointer-events: none;
                      position: fixed;
-                     font-size: xx-large;
+                     font-size: ${35 * this.tipsZoom}px;
                      background: #f5f5f5e0;
-                     border-radius: 10px!important;
+                     border-radius: ${10 * this.tipsZoom}px!important;
                      padding: 5px;
                      box-shadow: 0px 0px 10px 0px #000;
                      font-weight: bold;
@@ -2159,7 +2203,7 @@
                      white-space: normal;
                      max-width: 640px;
                      width: max-content;
-                     line-height: 35px;
+                     line-height: ${35 * this.tipsZoom}px;
                      word-break: break-all;
                      text-align: center;
                      box-sizing: content-box;
@@ -2184,12 +2228,16 @@
                  }
                  .funcKeyCall>.search-jumper-searchBar>.search-jumper-type:not(.search-jumper-open) {
                      display: none;
-                     border-radius: ${20 * this.scale}px!important;
+                     border-radius: ${20 * this.tilesZoom}px!important;
                  }
                  span.search-jumper-word>img {
                      width: ${20 * this.scale}px;
                      height: ${20 * this.scale}px;
                      margin: auto;
+                 }
+                 #search-jumper.funcKeyCall span.search-jumper-word>img {
+                     width: ${20 * this.tilesZoom}px;
+                     height: ${20 * this.tilesZoom}px;
                  }
                  .search-jumper-searchBar .search-jumper-btn.search-jumper-word:hover {
                      background: black;
@@ -2449,7 +2497,8 @@
                  }
                  .search-jumper-input svg:hover,
                  .searchJumperNavBar svg:hover,
-                 .search-jumper-input>.closeBtn:hover {
+                 .search-jumper-input>.closeBtn:hover,
+                 .searchJumperNavBar>div.minNavBtn:hover {
                      -webkit-transform:scale(1.2);
                      -moz-transform:scale(1.2);
                      transform:scale(1.2);
@@ -2499,7 +2548,7 @@
                  #searchInPage>.lockWords>span {
                      position: relative;
                      padding: 5px;
-                     cursor: alias;
+                     cursor: pointer;
                      user-select: none;
                      background: yellow;
                      color: black;
@@ -2509,6 +2558,9 @@
                      align-items: center;
                      white-space: nowrap;
                      max-width: 100%;
+                 }
+                 #searchInPage>.lockWords>span>em {
+                     cursor: alias;
                  }
                  #searchInPage>.lockWords .removeWord {
                      position: absolute;
@@ -2551,6 +2603,10 @@
                      pointer-events: none;
                      font-size: 0px;
                      opacity: 0;
+                     transition: width 0.3s;
+                 }
+                 .searchJumperNavBar:hover {
+                     width: 25px;
                  }
                  .searchJumperNavBar.sjNavShow {
                      pointer-events: all;
@@ -2564,6 +2620,43 @@
                      height: 16px;
                      fill: white;
                      cursor: pointer;
+                     display: inline-block;
+                 }
+                 .searchJumperNavBar>.minNavBtn {
+                     font-size: 12px;
+                     opacity: 0.1;
+                     background: white;
+                     color: black;
+                     border-radius: 10px;
+                     width: 16px;
+                     height: 16px;
+                     font-weight: bold;
+                     display: inline-block;
+                     cursor: pointer;
+                     transition: 0.25s opacity ease, 0.25s transform ease;
+                     pointer-events: all;
+                 }
+                 .searchJumperNavBar:hover>.minNavBtn {
+                     opacity: 0.8;
+                 }
+                 #search-jumper>.searchJumperNavBar.minimize {
+                     background: transparent;
+                     pointer-events: none;
+                 }
+                 .searchJumperNavBar.minimize>.closeNavBtn,
+                 .searchJumperNavBar.minimize>.navPointer,
+                 .searchJumperNavBar.minimize>#navMarks {
+                     display: none;
+                 }
+                 .searchJumperNavBar.minimize>.minNavBtn {
+                     opacity: 1;
+                     box-shadow: 0px 0px 3px 1px #000;
+                     margin-left: -50px;
+                     margin-top: 5px;
+                 }
+                 .search-jumper-right>.searchJumperNavBar.minimize>.minNavBtn {
+                     margin-left: unset;
+                     margin-right: -50px;
                  }
                  #navMarks+.navPointer {
                      pointer-events: none;
@@ -2579,7 +2672,7 @@
                      transition: top 0.25s ease;
                  }
                  #navMarks {
-                     height: 100%;
+                     height: calc(100% - 32px);
                      width: 100%;
                      position: absolute;
                  }
@@ -2588,26 +2681,11 @@
                      width: 100%;
                      position: absolute;
                      border: 1px solid #999999;
-                     min-height: 3px;
+                     min-height: 5px;
                      box-sizing: border-box;
                      left: 0;
                      border-radius: 0px!important;
-                 }
-                 mark.searchJumper,
-                 a.searchJumper {
-                     visibility: inherit;
-                     font-style: normal;
-                     box-shadow: rgba(0, 0, 0, 0.3) 1px 1px 3px;
-                     border-radius: 3px;
-                     text-decoration: none;
-                     padding: 1px 0;
-                 }
-                 mark.searchJumper[data-current=true],
-                 a.searchJumper[data-current=true] {
-                     border-bottom: 0.2em solid;
-                     border-bottom-left-radius: 0;
-                     border-bottom-right-radius: 0;
-                     animation: 0.5s linear 0s 5 normal none running currentMark;
+                     cursor: alias;
                  }
                  .searchJumperPosBar {
                      background: rgba(29, 93, 163, 0.3);
@@ -2634,10 +2712,6 @@
                      from {opacity: 1;}
                      to {opacity: 0;}
                  }
-                 @keyframes currentMark {
-                     from {border-color: unset}
-                     to {border-color: transparent;}
-                 }
                  #rightSizeChange {
                      top: 0;
                      opacity: 0;
@@ -2655,10 +2729,16 @@
                      width: 32px;
                      height: 32px;
                      line-height: 32px;
+                     min-width: auto;
+                     min-height: auto;
                  }
                  .search-jumper-historylist>a.search-jumper-btn>img {
                      width: 32px;
                      height: 32px;
+                 }
+                 .search-jumper-historylist>a.search-jumper-btn:not(.search-jumper-word)>span {
+                     font-size: 12px;
+                     line-height: normal;
                  }
                  #search-jumper .listArrow {
                      width: 0;
@@ -2752,8 +2832,30 @@
                      }
                  }
                  `;
+                this.inPageCss = `
+                 mark.searchJumper,
+                 a.searchJumper {
+                     visibility: inherit;
+                     font-style: normal;
+                     box-shadow: rgba(0, 0, 0, 0.3) 1px 1px 3px;
+                     border-radius: 3px;
+                     text-decoration: none;
+                     padding: 1px 0;
+                     -webkit-text-fill-color: initial;
+                 }
+                 mark.searchJumper[data-current=true],
+                 a.searchJumper[data-current=true] {
+                     border-bottom: 0.2em solid;
+                     border-bottom-left-radius: 0;
+                     border-bottom-right-radius: 0;
+                     animation: 0.5s linear 0s 5 normal none running currentMark;
+                 }
+                 @keyframes currentMark {
+                     from {border-color: unset}
+                     to {border-color: transparent;}
+                 }
+                `;
                 if (searchData.prefConfig.cssText) cssText += searchData.prefConfig.cssText;
-                mainStyleEle = _GM_addStyle(cssText);
 
                 let logoCon = document.createElement("span");
                 logoCon.className = "search-jumper-logo";
@@ -2908,6 +3010,7 @@
                 searchJumperNavBar.style.display = "none";
                 searchJumperNavBar.innerHTML = createHTML(`
                   <svg class="closeNavBtn" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>Close navigation</title>${closePath}</svg>
+                  <div class="minNavBtn" title="Minimize navigation">-</div>
                   <div id="navMarks"></div>
                   <div class="navPointer">></div>
                 `);
@@ -2923,6 +3026,7 @@
 
                 this.navMarks = searchJumperNavBar.querySelector("#navMarks");
                 this.closeNavBtn = searchJumperNavBar.querySelector(".closeNavBtn");
+                this.minNavBtn = searchJumperNavBar.querySelector(".minNavBtn");
                 this.searchJumperNavBar = searchJumperNavBar;
                 this.navPointer = searchJumperNavBar.querySelector(".navPointer");
                 this.navPointer.style.display = "none";
@@ -2959,6 +3063,7 @@
                       <svg id="addWord" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>${i18n("addWord")}</title><path d="M821.364 962h-618.75C123.864 962 62 900.114 62 821.364v-618.75c0-78.75 61.864-140.635 140.614-140.635h618.75c78.75 0 140.636 61.885 140.636 140.635v618.75C962 900.114 900.114 962 821.364 962z m79.265-756.814c0-46.586-35.25-81.815-81.815-81.815H205.186c-46.843-0.214-84.557 34.758-83.165 82.393-0.128 14.4 1.35 613.05 1.35 613.05 0 46.565 35.25 81.815 81.815 81.815h613.628c46.565 0 81.815-35.25 81.815-81.815V205.186z m-173.55 347.657H552.843v174.236c0 16.95-13.736 30.685-30.686 30.685h-0.236a30.686 30.686 0 0 1-30.685-30.685V552.843H296.92a30.686 30.686 0 0 1-30.685-30.686v-0.236c0-16.95 13.735-30.685 30.685-30.685h194.315V296.92c0-16.95 13.735-30.685 30.685-30.685h0.236c16.95 0 30.686 13.735 30.686 30.685v194.315h174.236c16.95 0 30.685 13.735 30.685 30.685v0.236c0 16.95-13.735 30.686-30.685 30.686z"></path></svg>
                       <svg id="emptyBtn" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>${i18n("emptyBtn")}</title><path d="m159.45829,231.40004l-48.83334,0a36.625,34.1375 0 0 1 0,-68.275l805.75004,0a36.625,34.1375 0 0 1 0,68.275l-683.6667,0l0,603.09581a61.04167,56.89583 0 0 0 61.04167,56.89584l439.50002,0a61.04167,56.89583 0 0 0 61.04167,-56.89584l0,-500.68332a36.625,34.1375 0 0 1 73.25,0l0,500.68332c0,69.12844 -60.12604,125.17084 -134.29167,125.17084l-439.50002,0c-74.16563,0 -134.29167,-56.0424 -134.29167,-125.17084l0,-603.09581zm256.37501,-113.79167a36.625,34.1375 0 0 1 0,-68.275l195.33334,0a36.625,34.1375 0 0 1 0,68.275l-195.33334,0zm-36.625,307.23749a36.625,34.1375 0 0 1 73.25,0l0,273.09999a36.625,34.1375 0 0 1 -73.25,0l0,-273.09999zm195.33334,0a36.625,34.1375 0 0 1 73.25,0l0,273.09999a36.625,34.1375 0 0 1 -73.25,0l0,-273.09999z"/></svg>
                       <svg id="copyInPageBtn" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>${i18n("copyInPageBtn")}</title><path d="M706.5 188.4H190.2c-29.8 0-54 24.2-54 54v662.9c0 29.8 24.2 54 54 54h516.3c29.8 0 54-24.2 54-54V242.4c0-29.8-24.2-54-54-54z m-18 698.9H208.2V260.4h480.3v626.9zM313.7 512.2h275.2c19.9 0 36-16.1 36-36s-16.1-36-36-36H313.7c-19.9 0-36 16.1-36 36s16.1 36 36 36zM313.7 715.2h201.6c19.9 0 36-16.1 36-36s-16.1-36-36-36H313.7c-19.9 0-36 16.1-36 36s16.1 36 36 36zM837.2 64.7H302.9c-19.9 0-36 16.1-36 36s16.1 36 36 36h516.3v662.9c0 19.9 16.1 36 36 36s36-16.1 36-36V118.7c0-29.8-24.2-54-54-54z"></path></svg>
+                      <svg id="wordModeBtn" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>${i18n("wordModeBtn")}</title><path d="M832 128c38.4 0 64 25.6 64 64v640c0 38.4-25.6 64-64 64H192c-38.4 0-64-25.6-64-64V192c0-38.4 25.6-64 64-64h640m0-64H192c-70.4 0-128 57.6-128 128v640c0 70.4 57.6 128 128 128h640c70.4 0 128-57.6 128-128V192c0-70.4-57.6-128-128-128z"></path><path d="M736 812.8h-448c-19.2 0-32-12.8-32-32s12.8-32 32-32h448c19.2 0 32 12.8 32 32 0 12.8-12.8 32-32 32zM320 704c-19.2-6.4-25.6-25.6-19.2-44.8l185.6-454.4c6.4-12.8 25.6-19.2 38.4-12.8 19.2 6.4 25.6 25.6 19.2 44.8l-185.6 454.4c-6.4 12.8-25.6 19.2-38.4 12.8z"></path><path d="M704 691.2c19.2-6.4 25.6-25.6 19.2-44.8L544 211.2c-6.4-19.2-25.6-25.6-38.4-19.2-19.2 6.4-25.6 25.6-19.2 38.4l179.2 441.6c6.4 19.2 25.6 25.6 38.4 19.2z"></path><path d="M371.2 492.8h256v64h-256z"></path></svg>
                       <svg id="recoverBtn" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>${i18n("recoverBtn")}</title><path d="M502.26 289.06c-0.02 16.95 13.26 30.94 30.18 31.8 123.47 8.79 236.97 70.94 310.89 170.21 73.92 99.28 100.91 225.84 73.93 346.65-41.65-181.74-195.38-316.12-381.05-333.08-8.89-0.6-17.63 2.55-24.09 8.7a31.798 31.798 0 0 0-9.86 23.64v85.15a32.343 32.343 0 0 1-50.67 26.41L114.21 413.02a32.341 32.341 0 0 1-14.46-26.95c0-10.84 5.43-20.96 14.46-26.95L451.6 124.68a32.358 32.358 0 0 1 33.28-2.03 32.355 32.355 0 0 1 17.39 28.44v137.97h-0.01z"></path></svg>
                       <svg id="saveRuleBtn" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>${i18n("saveRuleBtn")}</title><path d="M579.7 291.4c18.8 0 34.1-15.3 34.1-34.1v-34.1c0-18.8-15.4-34.1-34.1-34.1-18.8 0-34.1 15.3-34.1 34.1v34.1c0 18.7 15.4 34.1 34.1 34.1zM944.7 216.3L808.2 79.9c-6.8-6.8-15.3-10.2-23.9-10.2H170.4c-56.3 0-102.3 46-102.3 102.3v682.1c0 56.3 46 102.3 102.3 102.3H852.5c56.3 0 102.3-46 102.3-102.3V240.2c0.1-8.5-3.3-17-10.1-23.9zM358 137.9h307v182.5c0 11.9-10.2 22.2-22.2 22.2H380.2c-11.9 0-22.2-10.2-22.2-22.2V137.9z m358.1 750.3H306.9V652.9c0-20.5 17.1-37.5 37.5-37.5h334.2c20.5 0 37.5 17 37.5 37.5v235.3z m170.6-34.1c0 18.8-15.3 34.1-34.1 34.1h-66.5V652.9c0-58-47.7-105.7-105.7-105.7h-336c-58 0-105.7 47.7-105.7 105.7v235.3h-68.2c-18.8 0-34.1-15.3-34.1-34.1V172c0-18.8 15.3-34.1 34.1-34.1h119.4v182.5c0 49.5 40.9 90.4 90.4 90.4h262.6c49.5 0 90.4-40.9 90.4-90.4V137.9h37.5l116 116v600.2z"></path></svg>
                       <svg id="pinBtn" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><title>${i18n("pinBtn")}</title><path d="m674.8822,92.83803a81.61801,81.04246 0 0 1 25.30158,17.09996l213.75757,212.46631a81.61801,81.04246 0 0 1 -24.70304,131.36982l-75.74151,33.30845l-142.09696,141.257l-11.26329,155.3854a81.61801,81.04246 0 0 1 -139.13151,51.46196l-137.98885,-137.15085l-235.14149,234.56388l-57.83996,-57.18896l235.27751,-234.69896l-142.7499,-141.85131a81.61801,81.04246 0 0 1 51.6642,-138.09635l160.95072,-11.94025l139.5668,-138.74469l32.78324,-75.09935a81.61801,81.04246 0 0 1 107.35489,-42.14208zm-32.45675,74.36997l-38.95901,89.22775l-171.94193,170.99958l-191.25821,14.1284l338.46989,336.3262l13.43977,-185.47917l174.33607,-173.32279l89.69819,-39.44067l-213.78477,-212.43929z"></path></svg>
@@ -2981,6 +3086,7 @@
                 this.editBtn = searchInputDiv.querySelector("#editBtn");
                 this.addWord = searchInputDiv.querySelector("#addWord");
                 this.recoverBtn = searchInputDiv.querySelector("#recoverBtn");
+                this.wordModeBtn = searchInputDiv.querySelector("#wordModeBtn");
                 this.saveRuleBtn = searchInputDiv.querySelector("#saveRuleBtn");
                 this.pinBtn = searchInputDiv.querySelector("#pinBtn");
                 this.locBtn = searchInputDiv.querySelector("#locBtn");
@@ -2995,6 +3101,7 @@
                 this.rightSizeChange = searchInputDiv.querySelector("#rightSizeChange");
                 this.filterGlob = searchInputDiv.querySelector("#filterGlob");
                 this.suggestDatalist = searchInputDiv.querySelector("#suggest");
+                this.fakeTextareas = {};
             }
 
             showInPageSearch() {
@@ -3020,22 +3127,23 @@
                 }
             }
 
-            anylizeInPageWords(words, add, init) {
+            anylizeInPageWords(words, init) {
                 if (!words) return [];
                 let self = this;
                 let result = [];
-                if (!add) {
+                if (!this.lockWords) {
                     if (words.indexOf("$c") === 0 && words.length > 2) {
-                        this.splitSep = words.substr(2, 1);
                         words = words.substr(3).trim();
                     } else if (words.indexOf("$o") === 0) {
-                        this.splitSep = null;
                         words = words.substr(2).trim();
-                    } else this.splitSep = " ";
-                    this.curWordIndex = 0;
+                    }
                 }
                 if (this.splitSep) {
-                    words.split(this.splitSep).forEach(word => {
+                    let splitSep = this.splitSep;
+                    if (this.wordModeBtn.classList.contains("checked")) {
+                        splitSep = new RegExp(`[\\${this.splitSep} \.]`);
+                    }
+                    words.split(splitSep).forEach(word => {
                         let oriWord = word;
                         word = word.trim();
                         if (!word) return;
@@ -3111,13 +3219,13 @@
                             link = reMatch[2].indexOf("l") != -1;
                         }
                         if (!showWords) showWords = word;
-                        result.push({content: word, showWords: showWords, isRe: isRe, link: link, reCase: reCase, title: title, style: style, oriWord: oriWord, hideParent: hideParent, inRange: inRange, popup: popup});
+                        result.push({content: word, showWords: showWords, isRe: isRe, link: link, reCase: reCase, title: title, style: style, oriWord: oriWord, hideParent: hideParent, inRange: inRange, popup: popup, init: init});
                         self.curWordIndex++;
                     });
                 } else {
                     this.curWordIndex = 0;
-                    let word = (add || "").replace(/^\$o/, "") + words;
-                    result = [{content: word, isRe: false, reCase: "", title: "", style: ""}];
+                    let word = (this.lockWords || "").replace(/^\$o/, "") + words;
+                    result = [{content: word, showWords: word, isRe: false, reCase: "", title: "", style: self.getHighlightStyle(self.curWordIndex, "", ""), init: init}];
                 }
                 return result;
             }
@@ -3135,12 +3243,20 @@
                         for (let i in this.highlightSpans) {
                             let span = this.highlightSpans[i];
                             let curList = this.marks[i];
-                            this.setHighlightSpan(span, 0, curList ? curList.length : 1);
+                            this.setHighlightSpan(span, 0, curList);
                         }
                     }
                     return wordSpans;
                 }
-                let targetWords = this.anylizeInPageWords(words, this.lockWords, !!init);
+                if (!this.lockWords) {
+                    if (words.indexOf("$c") === 0 && words.length > 2) {
+                        this.splitSep = words.substr(2, 1);
+                    } else if (words.indexOf("$o") === 0) {
+                        this.splitSep = null;
+                    } else this.splitSep = "◎";
+                    this.curWordIndex = 0;
+                }
+                let targetWords = this.anylizeInPageWords(words, !!init);
                 if (!targetWords || targetWords.length == 0) return wordSpans;
                 if (this.lockWords) {
                     this.lockWords += this.splitSep + words;
@@ -3183,6 +3299,11 @@
                             this.focusHighlightByText(word.showWords, false, wordSpan);
                         }
                     });
+                    wordSpan.addEventListener("editword", e => {
+                        wordSpan.parentNode.removeChild(wordSpan);
+                        this.removeHighlightWord(word);
+                        this.searchJumperInPageInput.value = word.content;
+                    });
                     let removeBtn = document.createElement("div");
                     removeBtn.addEventListener("mousedown", e => {
                         wordSpan.parentNode.removeChild(wordSpan);
@@ -3195,7 +3316,7 @@
                     wordSpan.appendChild(removeBtn);
 
                     let curList = this.marks[word.showWords];
-                    this.setHighlightSpan(wordSpan, -1, curList ? curList.length : 1);
+                    this.setHighlightSpan(wordSpan, -1, curList);
                     this.highlightSpans[word.showWords] = wordSpan;
 
                     this.searchInPageLockWords.appendChild(wordSpan);
@@ -3561,7 +3682,7 @@
                     this.finalSearch.dataset.url = tempUrl;
                     this.finalSearch.value = tempUrl.replace(/◎/g, '');
                     if (!this.customInputCssEle || !this.customInputCssEle.parentNode) this.customInputCssEle = _GM_addStyle(this.customInputCssText);
-                    document.documentElement.appendChild(this.customInputFrame);
+                    this.addToShadow(this.customInputFrame);
                     let frameBody = this.customInputFrame.children[0];
                     frameBody.style.marginTop = -frameBody.offsetHeight / 2 + "px";
                 });
@@ -3578,7 +3699,7 @@
                     this.modifySpan = wordSpan;
                 }
                 if (!this.modifyFrame) {
-                    this.modifyCssText = `
+                    let modifyCssText = `
                     .searchJumperModify-body {
                         width: 300px;
                         min-height: 200px;
@@ -3710,7 +3831,7 @@
                       }
                     }
                     `;
-                    this.modifyCssEle = _GM_addStyle(this.modifyCssText);
+                    let modifyCssEle = _GM_addStyle(modifyCssText);
                     let modifyFrame = document.createElement("div");
                     this.modifyFrame = modifyFrame;
                     modifyFrame.id = "searchJumperModifyWord";
@@ -3720,7 +3841,7 @@
                              <img width="32px" height="32px" src="${logoBase64}" />${i18n("modifyWord")}
                          </a>
                          <div class="searchJumperModify-input-title">${i18n("wordContent")}</div>
-                         <input name="wordContent" placeholder="words" type="text"/>
+                         <input id="searchJumperHighlightWord" name="wordContent" placeholder="words" type="text"/>
                          <div class="searchJumperModify-checkGroup">
                              <input id="searchJumperModify-re" type="checkbox"/>
                              <label for="searchJumperModify-re">${i18n("re")}</label>
@@ -3744,6 +3865,7 @@
                          </div>
                      </div>
                     `);
+                    modifyFrame.appendChild(modifyCssEle);
                     let cancelBtn = modifyFrame.querySelector("#cancel");
                     cancelBtn.addEventListener("click", e => {
                         if (modifyFrame.parentNode) {
@@ -3762,6 +3884,7 @@
                     this.modifyBtn = modifyBtn;
                     modifyBtn.addEventListener("click", e => {
                         let newWord = wordContent.value;
+                        if (this.splitSep) newWord = newWord.replaceAll(this.splitSep, "");
                         if (!newWord) return;
                         let contentChange = newWord !== this.modifyWord.showWords || wordReCase.checked !== this.modifyWord.isRe || wordLink.checked !== this.modifyWord.link;
                         if (wordIsRe.checked && newWord.indexOf("@") !== 0) {
@@ -3801,13 +3924,13 @@
                     });
                 }
                 let wordContent = this.modifyFrame.querySelector("[name='wordContent']"),
-                wordStyle = this.modifyFrame.querySelector("[name='wordStyle']"),
-                wordTitle = this.modifyFrame.querySelector("[name='wordTitle']"),
-                wordRange = this.modifyFrame.querySelector("[name='wordRange']"),
-                wordHide = this.modifyFrame.querySelector("[name='wordHide']"),
-                wordIsRe = this.modifyFrame.querySelector("#searchJumperModify-re"),
-                wordReCase = this.modifyFrame.querySelector("#searchJumperModify-case"),
-                wordLink = this.modifyFrame.querySelector("#searchJumperModify-link");
+                    wordStyle = this.modifyFrame.querySelector("[name='wordStyle']"),
+                    wordTitle = this.modifyFrame.querySelector("[name='wordTitle']"),
+                    wordRange = this.modifyFrame.querySelector("[name='wordRange']"),
+                    wordHide = this.modifyFrame.querySelector("[name='wordHide']"),
+                    wordIsRe = this.modifyFrame.querySelector("#searchJumperModify-re"),
+                    wordReCase = this.modifyFrame.querySelector("#searchJumperModify-case"),
+                    wordLink = this.modifyFrame.querySelector("#searchJumperModify-link");
 
                 if (this.addNew) {
                     wordContent.value = "";
@@ -3841,8 +3964,7 @@
                         debug(e);
                     }
                 }
-                if (!this.modifyCssEle || !this.modifyCssEle.parentNode) this.modifyCssEle = _GM_addStyle(this.modifyCssText);
-                getBody(document).appendChild(this.modifyFrame);
+                this.addToShadow(this.modifyFrame);
             }
 
             replaceWord(word, newWord, modifySpan, contentChange) {
@@ -3940,9 +4062,12 @@
 
                 this.marks[word.showWords].forEach(mark => {
                     if (mark.parentNode) {
-                        if (!/^MARK$/i.test(mark.nodeName)) {
+                        if (mark.dataset.block) {
+                            mark.parentNode && mark.parentNode.removeChild(mark);
+                        } else if (!/^MARK$/i.test(mark.nodeName)) {
                             mark.classList.remove("searchJumper");
-                            mark.style.cssText = "";
+                            mark.style.cssText = mark.dataset.css || "";
+                            delete mark.dataset.css;
                         } else {
                             let newNode = document.createTextNode(mark.innerText);
                             mark.parentNode.replaceChild(newNode, mark);
@@ -3978,17 +4103,30 @@
                         } else this.focusIndex = curList.length - 1;
                     }
                 }
+                let newIndex = this.focusIndex;
+                if (fw) {
+                    while (!curList[newIndex].offsetParent || curList[newIndex].dataset.type) {
+                        if (newIndex != curList.length - 1) {
+                            newIndex = newIndex + 1;
+                        } else newIndex = 0;
+                        if (newIndex == this.focusIndex) break;
+                    }
+                } else {
+                    while (!curList[newIndex].offsetParent || curList[newIndex].dataset.type) {
+                        if (newIndex != 0) {
+                            newIndex = newIndex - 1;
+                        } else newIndex = curList.length - 1;
+                        if (newIndex == this.focusIndex) break;
+                    }
+                }
+                this.focusIndex = newIndex;
                 this.focusHighlight(curList[this.focusIndex]);
-                this.setHighlightSpan(span, this.focusIndex, curList.length);
+                this.setHighlightSpan(span, this.focusIndex, curList);
             }
 
             focusHighlight(ele) {
                 if (!ele) return;
                 if (this.focusMark) this.focusMark.removeAttribute('data-current');
-                setTimeout(() => {
-                    ele.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
-                    ele.dataset.current = true;
-                }, 0);
                 this.focusMark = ele;
                 if (!this.wPosBar) {
                     this.wPosBar = document.createElement("div");
@@ -3997,8 +4135,8 @@
                     this.hPosBar.className = "searchJumperPosBar searchJumperPosH";
                 }
                 if (!this.wPosBar.parentNode) {
-                    getBody(document).appendChild(this.wPosBar);
-                    getBody(document).appendChild(this.hPosBar);
+                    this.addToShadow(this.wPosBar);
+                    this.addToShadow(this.hPosBar);
                 }
 
                 let rect = ele.getBoundingClientRect();
@@ -4010,9 +4148,23 @@
 
                 this.wPosBar.style.animationName = "";
                 this.hPosBar.style.animationName = "";
-                setTimeout(() => {
+                let self = this;
+                setTimeout(async () => {
+                    ele.scrollIntoView({behavior: "smooth", block: "center", inline: "nearest"});
+                    ele.dataset.current = true;
                     this.wPosBar.style.animationName = "fadeit";
                     this.hPosBar.style.animationName = "fadeit";
+                    let fixTimes = 0;
+                    function fixPosBar() {
+                        if (self.focusMark != ele || ++fixTimes > 10) return;
+                        let rect = ele.getBoundingClientRect();
+                        self.wPosBar.style.top = rect.top + document.documentElement.scrollTop + getBody(document).scrollTop + "px";
+                        self.hPosBar.style.left = rect.left + "px";
+                        setTimeout(() => {
+                            fixPosBar();
+                        }, 150);
+                    }
+                    fixPosBar();
                 }, 0);
 
             }
@@ -4021,7 +4173,7 @@
                 return this.highlightSpans[text];
             }
 
-            setHighlightSpan(span, index, len) {
+            setHighlightSpan(span, index, list) {
                 if (!span) return;
                 let numEle = span.querySelector("em");
                 if (!numEle) {
@@ -4029,6 +4181,13 @@
                     span.insertBefore(numEle, span.firstChild);
                 }
                 index++;
+                let len = 0;
+                if (list && list.length) {
+                    len = 0;
+                    list.forEach(e => {
+                        if (!e.dataset.type) len++;
+                    });
+                }
                 numEle.innerHTML = createHTML("[" + index + "/" + len + "]");
             }
 
@@ -4115,6 +4274,122 @@
                 return `${background}${addCssText}`;
             }
 
+            createNavMark(node, word, index, curList) {
+                let self = this;
+                let navMark = document.createElement("span");
+                let top = getElementTop(node);
+                navMark.dataset.top = top;
+                navMark.dataset.content = word.showWords;
+                navMark.style.top = top / document.documentElement.scrollHeight * 100 + "%";
+                navMark.style.background = node.style.background || "yellow";
+                navMark.addEventListener("click", e => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    self.focusIndex = index;
+                    self.focusHighlight(node);
+                    self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), index, curList);
+                    self.navPointer.style.display = "";
+                    self.navPointer.style.top = navMark.offsetTop + 33 + "px";
+                    return false;
+                }, true);
+                self.navMarks.appendChild(navMark);
+            }
+
+            anylizeDomWithTextPos(dom, result) {
+                if (!result) result = {text: "", data:{}};
+                if (!dom || !dom.childNodes || !dom.childNodes.length) {
+                    return result;
+                }
+                dom.childNodes.forEach(ele => {
+                    if (ele.classList && ele.classList.contains("searchJumper")) {
+                        const start = result.text.length;
+                        result.text += "\n";
+                        result.data[start + 1] = {node: ele, text: "\n"};
+                    } else if (ele.offsetParent) {
+                        result = this.anylizeDomWithTextPos(ele, result);
+                    } else if (ele.nodeType === 3) {
+                        let textData;
+                        if (ele.parentNode.childNodes.length == 1) {
+                            textData = ele.parentNode.innerText;
+                        } else {
+                            textData = ele.data;
+                        }
+                        if (!textData.trim()) return;
+                        const start = result.text.length;
+                        result.text += textData;
+                        result.data[result.text.length - 1] = {node: ele, text: textData};
+                    }
+                });
+                return result;
+            }
+
+            createHighlightMark(word, index, curList) {
+                let self = this;
+                let spannode = document.createElement("mark");
+                spannode.className = "searchJumper";
+                if (word.title) spannode.title = JSON.parse('"' + word.title + '"');
+                if (word.popup) {
+                    spannode.addEventListener("mouseenter", e => {
+                        if (targetElement != spannode || !searchBar.funcKeyCall) {
+                            targetElement = spannode;
+                            searchBar.showInPage(true, e);
+                        }
+                    });
+                }
+                spannode.style.cssText = word.style;
+                spannode.addEventListener("click", e => {
+                    if (!e.altKey) return;
+                    e.stopPropagation();
+                    e.preventDefault();
+                    return false;
+                });
+                spannode.dataset.content = word.showWords;
+                spannode.addEventListener("mousedown", e => {
+                    if (!e.altKey) return;
+                    let target;
+                    let newIndex = index;
+                    while (!target || target.dataset.type) {
+                        if (e.button === 0) {
+                            if (newIndex != curList.length - 1) {
+                                newIndex++;
+                                self.focusIndex = newIndex;
+                            } else self.focusIndex = 0;
+                        } else if (e.button === 2){
+                            if (newIndex != 0) {
+                                newIndex--;
+                                self.focusIndex = newIndex;
+                            } else self.focusIndex = curList.length - 1;
+                        }
+                        target = curList[self.focusIndex];
+                        if (newIndex == index) break;
+                    }
+                    self.focusHighlight(target);
+                    self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), self.focusIndex, curList);
+                    self.focusText = word.showWords;
+                });
+                return spannode;
+            }
+
+            findPosInStr(content, kw) {
+                if (!self.findInpageAddons) self.findInpageAddons = _unsafeWindow.searchJumperAddons.filter(data => data.type == "findInPage").sort((a, b) => (a.sort || 0) - (b.sort || 0));
+                let len = 0, pos = -1;
+                for (let i = 0; i < self.findInpageAddons.length; i++) {
+                    let curAddon = self.findInpageAddons[i];
+                    if (!curAddon || !curAddon.run) continue;
+                    let curData = curAddon.run(content, kw);
+                    if (curData && curData.matched) {
+                        len = curData.len;
+                        pos = curData.pos;
+                        break;
+                    }
+                }
+                if (pos == -1) {
+                    len = kw.length;
+                    pos = content.toUpperCase().indexOf(kw.toUpperCase());
+                }
+                return {len: len, pos: pos};
+            }
+
             highlight(words, ele, root) {
                 if (!words && (!this.curHighlightWords || this.curHighlightWords.length === 0)) return;
                 if (!ele) {
@@ -4134,7 +4409,9 @@
                     });
                     return;
                 }
+                if (ele.id == "searchJumperModifyWord") return;
                 ele = ele || getBody(document);
+                let inWordMode = this.wordModeBtn.classList.contains("checked");
                 let preEles = [];
                 let searchingPre = false;
                 let self = this;
@@ -4143,9 +4420,12 @@
                         if (!markList) return;
                         markList.forEach(mark => {
                             if (!mark.parentNode) return;
-                            if (!/^MARK$/i.test(mark.nodeName)) {
+                            if (mark.dataset.block) {
+                                mark.parentNode && mark.parentNode.removeChild(mark);
+                            } else if (!/^MARK$/i.test(mark.nodeName)) {
                                 mark.classList.remove("searchJumper");
-                                mark.style.cssText = "";
+                                mark.style.cssText = mark.dataset.css || "";
+                                delete mark.dataset.css;
                             } else {
                                 let newNode = document.createTextNode(mark.innerText);
                                 mark.parentNode.replaceChild(newNode, mark);
@@ -4163,281 +4443,416 @@
                     this.curHighlightWords = [];
                     return;
                 }
-                if (words === "insert") {
+                if (!this.inPageStyle) {
+                    this.inPageStyle = _GM_addStyle(this.inPageCss);
+                }
+                if (!this.inPageStyle.parentNode) {
+                    document.head.appendChild(this.inPageStyle);
+                }
+                let insert = (words === "insert");
+                if (insert) {
                     words = this.curHighlightWords;
                     this.refreshNavMarks();
                 } else {
                     this.curHighlightWords = (this.curHighlightWords || []).concat(words);
                 }
-                function searchWithinNode(node, word) {
+                this.fakeTextareas = {};
+                function searchWithinNode(node, word, start) {
                     let len, pos = -1, skip, spannode, middlebit, middleclone;
                     skip = 0;
                     let pa = node.parentNode;
-                    if (node.nodeType == 1 && node.classList && node.classList.contains("searchJumper")) return 0;
-                    if (word.link && node.nodeType == 1 && node.href && node.href.match) {
-                        let wordMatch = node.href.match(new RegExp(word.content, word.reCase));
-                        if (wordMatch) {
-                            if (typeof word.hideParent !== 'undefined') {
-                                let parentDepth = word.hideParent;
-                                let parent = node;
-                                while(parentDepth-- > 0 && parent) {
-                                    parent = parent.parentElement;
+                    if (node.nodeType == 1 && node.className && node.className.indexOf && node.className.indexOf("searchJumper") != -1) return 0;
+                    if (start && node.nodeType == 1) {
+                        let domTextResult = self.anylizeDomWithTextPos(node);
+                        let textRes = domTextResult.text;
+                        let dataRes = domTextResult.data;
+                        let index = 0;
+                        let nodeAndPos = [];
+                        //let validWord = (word.init || inWordMode) && /^[a-z]+$/i.test(word.content);
+                        function getNodePos(pos, len) {
+                            let keys = Object.keys(domTextResult.data);
+                            let findNodes = [], leftLen = len;
+                            let pre = "", after = "", after2 = "";
+                            for (let i = 0; i < keys.length; i++) {
+                                let end = keys[i];
+                                let curnode = domTextResult.data[end];
+                                if (pos > end || !curnode.text.trim()) continue;
+                                let curpos = pos - (end - curnode.text.length) - 1;
+                                let type = "full";
+                                if (curpos < 0) {
+                                    if (curnode.text.length < leftLen) {
+                                        type = "middle";
+                                    } else {
+                                        type = "end";
+                                    }
+                                } else {
+                                    if (curnode.text.length - curpos < leftLen) {
+                                        type = "start";
+                                    }
                                 }
-                                if (parent) {
-                                    parent.innerHTML = createHTML("");
-                                    parent.dataset.content = word.showWords;
-                                    parent.classList.add("searchJumper-hide");
-                                    return 0;
+
+                                /*if (validWord) {
+                                    if (type == "full") {
+                                        pre = curpos == 0 ? "\n" : curnode.text[curpos - 1];
+                                        after = (curpos + leftLen) == curnode.text.length ? "\n" : curnode.text[curpos + leftLen];
+                                        if (after !== "\n") {
+                                            after2 = (curpos + leftLen + 1) == curnode.text.length ? "\n" : curnode.text[curpos + leftLen + 1];
+                                        }
+                                    } else if (type == "start" && !pre) {
+                                        pre = curpos == 0 ? "\n" : curnode.text[curpos - 1];
+                                    } else if ((type == "end" || type == "full") && !after) {
+                                        after = (curpos + leftLen) == curnode.text.length ? "\n" : curnode.text[curpos + leftLen];
+                                        if (after !== "\n") {
+                                            after2 = (curpos + leftLen + 1) == curnode.text.length ? "\n" : curnode.text[curpos + leftLen + 1];
+                                        }
+                                    }
+                                    if (pre && after) {
+                                        if (/[a-z]/i.test(pre) || /[a-rt-z]/i.test(after) || (after.toLowerCase() == 's' && /[a-z]/i.test(after2))) {
+                                            break;
+                                        }
+                                    }
+                                }*/
+
+                                if (curpos < 0) curpos = 0;
+                                let curlen = Math.min(leftLen, curnode.text.length - curpos);
+                                let nodeInfo;
+                                for (let j = 0; j < nodeAndPos.length; j++) {
+                                    if (nodeAndPos[j].node == curnode.node) {
+                                        nodeInfo = nodeAndPos[j];
+                                        break;
+                                    }
+                                }
+                                if (!nodeInfo) nodeAndPos.push({node: curnode.node, text: curnode.text, match:[{pos: curpos, len: curlen, type: type}]});
+                                else nodeInfo.match.push({pos: curpos, len: curlen, type: type});
+                                leftLen -= curlen;
+                                if (leftLen <= 0) break;
+                            }
+                        }
+                        function getIndex() {
+                            pos = -1;
+                            if (word.isRe) {
+                                let wordMatch = textRes.match(new RegExp(word.content, word.reCase));
+                                if (wordMatch) {
+                                    let content = wordMatch[0];
+                                    len = content.length;
+                                    pos = wordMatch.index;
                                 }
                             } else {
-                                let curList = self.marks[word.showWords];
-                                let index = curList.length;
-                                node.classList.add("searchJumper");
-                                if (word.title) node.title = JSON.parse('"' + word.title + '"');
-                                if (word.popup) {
-                                    node.addEventListener("mouseenter", e => {
-                                        if (targetElement != node || !searchBar.funcKeyCall) {
-                                            targetElement = node;
-                                            searchBar.showInPage(true, e);
+                                let result = self.findPosInStr(textRes, word.content);
+                                len = result.len;
+                                pos = result.pos;
+                            }
+                            if (pos > -1) {
+                                textRes = textRes.slice(pos + len);
+                                pos += index;
+                                index = pos + len;
+                                getNodePos(pos, len);
+                                getIndex();
+                            }
+                        }
+                        getIndex();
+                        if (nodeAndPos.length) {
+                            nodeAndPos.forEach(data => {
+                                if (typeof word.hideParent !== 'undefined') {
+                                    let parentDepth = word.hideParent;
+                                    let parent = data.node.parentElement;
+                                    while(parentDepth-- > 0 && parent) {
+                                        parent = parent.parentElement;
+                                    }
+                                    if (parent && parent.classList && !parent.classList.contains("searchJumper-hide")) {
+                                        parent.innerHTML = createHTML("");
+                                        parent.dataset.content = word.showWords;
+                                        parent.classList.add("searchJumper-hide");
+                                    }
+                                } else {
+                                    let curList = self.marks[word.showWords];
+                                    let index = curList.length;
+                                    let spannode;
+                                    let newTextNodeCon;
+                                    let parentStyle = getComputedStyle(data.node.parentNode);
+                                    let parentDisplay = parentStyle.display;
+                                    if (parentDisplay.indexOf("flex") != -1 || parentDisplay.indexOf("grid") != -1 || parentDisplay.indexOf("layer") != -1) {
+                                        newTextNodeCon = document.createElement("span");
+                                        newTextNodeCon.style.all = "unset";
+                                    } else {
+                                        newTextNodeCon = document.createDocumentFragment();
+                                    }
+                                    let newTextNode = document.createTextNode(data.text);
+                                    newTextNodeCon.appendChild(newTextNode);
+                                    let matches = data.match.reverse();
+                                    let spannodes = [];
+                                    matches.forEach(d => {
+                                        spannode = self.createHighlightMark(word, index, curList);
+                                        switch (d.type) {
+                                            case "start":
+                                                spannode.style.borderTopRightRadius = 0;
+                                                spannode.style.borderBottomRightRadius = 0;
+                                                break;
+                                            case "middle":
+                                                spannode.style.borderRadius = 0;
+                                                break;
+                                            case "end":
+                                                spannode.style.borderTopLeftRadius = 0;
+                                                spannode.style.borderBottomLeftRadius = 0;
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                        middlebit = newTextNode.splitText(d.pos);
+                                        middlebit.splitText(d.len);
+                                        middleclone = middlebit.cloneNode(true);
+                                        spannode.appendChild(middleclone);
+                                        if (d.type != "full" && d.type != "start") {
+                                            spannode.dataset.type = d.type;
+                                        }
+                                        newTextNodeCon.replaceChild(spannode, middlebit);
+                                        spannodes.unshift(spannode);
+                                    });
+                                    data.node.parentNode.replaceChild(newTextNodeCon, data.node);
+                                    spannodes.forEach(n => {
+                                        self.marks[word.showWords].push(n);
+                                        if (!n.dataset.type) {
+                                            self.createNavMark(n, word, index, curList);
                                         }
                                     });
                                 }
-                                if (word.style) node.style.cssText = word.style;
-                                node.addEventListener("click", e => {
-                                    if (!e.altKey) return;
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    return false;
-                                });
-                                node.dataset.content = word.showWords;
-                                node.addEventListener("mousedown", e => {
-                                    if (!e.altKey) return;
-                                    let target;
-                                    if (e.button === 0) {
-                                        if (index != curList.length - 1) {
-                                            self.focusIndex = index + 1;
-                                        } else self.focusIndex = 0;
-                                    } else if (e.button === 2){
-                                        if (index != 0) {
-                                            self.focusIndex = index - 1;
-                                        } else self.focusIndex = curList.length - 1;
-                                    }
-                                    target = curList[self.focusIndex];
-                                    self.focusHighlight(target);
-                                    self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), self.focusIndex, curList.length);
-                                    self.focusText = word.showWords;
-                                });
-                                self.marks[word.showWords].push(node);
-
-                                let navMark = document.createElement("span");
-                                let top = getElementTop(node);
-                                navMark.dataset.top = top;
-                                navMark.dataset.content = word.showWords;
-                                navMark.style.top = top / document.documentElement.scrollHeight * 100 + "%";
-                                navMark.style.background = node.style.background || "yellow";
-                                navMark.addEventListener("click", e => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    self.focusIndex = index;
-                                    self.focusHighlight(node);
-                                    self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), index, curList.length);
-                                    self.navPointer.style.display = "";
-                                    self.navPointer.style.top = navMark.offsetTop + 16 + "px";
-                                    return false;
-                                }, true);
-                                self.navMarks.appendChild(navMark);
-
-                                skip = 1;
-                            }
+                            });
                         }
-                    } else if (!word.link && !node.innerText && node.value && /^(INPUT|TEXTAREA)$/i.test(node.nodeName) && !/(^wd|^kw|^q$|query)/i.test(node.name) && !/(^wd|^kw|^q$|query)/i.test(node.id)) {
-                        let wordMatch = false;
-                        if (word.isRe) {
-                            let wordMatch = node.value.match(new RegExp(word.content, word.reCase));
-                        } else {
-                            if (_unsafeWindow.searchJumperPinyin) {
-                                let pinyin = _unsafeWindow.searchJumperPinyin(node.value, word.content);
-                                if (pinyin.matched) {
-                                    len = pinyin.len;
-                                    pos = pinyin.pos;
-                                } else pos = -1;
-                            } else {
-                                len = word.content.length;
-                                pos = node.value.toUpperCase().indexOf(word.content.toUpperCase());
-                            }
-                            if (pos >= 0 && /^[a-z]+$/i.test(word.content)) {
-                                if (pos !== 0 && /[a-z]/i.test(node.value[pos - 1])) {
-                                    pos = -1;
-                                }
-                                if (pos + word.content.length !== node.value.length && /[a-z]/i.test(node.value[pos + word.content.length])) {
-                                    pos = -1;
-                                }
-                            }
-                            wordMatch = (pos >= 0);
-                        }
-                        if (wordMatch) {
-                            if (typeof word.hideParent !== 'undefined') {
-                                let parentDepth = word.hideParent;
-                                let parent = node.parentElement;
-                                while(parentDepth-- > 0 && parent) {
-                                    parent = parent.parentElement;
-                                }
-                                if (parent) {
-                                    parent.innerHTML = createHTML("");
-                                    parent.dataset.content = word.showWords;
-                                    parent.classList.add("searchJumper-hide");
-                                    return 0;
-                                }
-                            } else {
-                                let curList = self.marks[word.showWords];
-                                let index = curList.length;
-                                node.classList.add("searchJumper");
-                                if (word.title) node.title = JSON.parse('"' + word.title + '"');
-                                if (word.style) node.style.cssText = word.style;
-                                node.dataset.content = word.showWords;
-
-                                self.marks[word.showWords].push(node);
-
-                                let navMark = document.createElement("span");
-                                let top = getElementTop(node);
-                                navMark.dataset.top = top;
-                                navMark.dataset.content = word.showWords;
-                                navMark.style.top = top / document.documentElement.scrollHeight * 100 + "%";
-                                navMark.style.background = node.style.background || "yellow";
-                                navMark.addEventListener("click", e => {
-                                    e.stopPropagation();
-                                    e.preventDefault();
-                                    self.focusIndex = index;
-                                    self.focusHighlight(node);
-                                    self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), index, curList.length);
-                                    self.navPointer.style.display = "";
-                                    self.navPointer.style.top = navMark.offsetTop + 16 + "px";
-                                    return false;
-                                }, true);
-                                self.navMarks.appendChild(navMark);
-
-                                skip = 1;
-                            }
-                        }
-                    } else if (!word.link && node.nodeType == 3 && node.data && (typeof word.hideParent !== 'undefined' || /^BODY$/i.test(pa.nodeName) || pa.offsetParent || (pa.scrollHeight && pa.scrollWidth))) {
-                        if (word.isRe) {
-                            let wordMatch = node.data.match(new RegExp(word.content, word.reCase));
+                    }
+                    let checkChildren = true;
+                    if (word.link) {
+                        if (node.nodeType == 1 && node.href && node.href.match) {
+                            checkChildren = false;
+                            let wordMatch = node.href.match(new RegExp(word.content, word.reCase));
                             if (wordMatch) {
-                                let content = wordMatch[0] || wordMatch;
-                                len = content.length;
-                                pos = node.data.indexOf(content);
-                            }
-                        } else {
-                            if (_unsafeWindow.searchJumperPinyin) {
-                                let pinyin = _unsafeWindow.searchJumperPinyin(node.data, word.content);
-                                if (pinyin.matched) {
-                                    len = pinyin.len;
-                                    pos = pinyin.pos;
-                                } else pos = -1;
-                            } else {
-                                len = word.content.length;
-                                pos = node.data.toUpperCase().indexOf(word.content.toUpperCase());
-                            }
-                            if (pos >= 0 && /^[a-z]+$/i.test(word.content)) {
-                                if (pos !== 0 && /[a-z]/i.test(node.data[pos - 1])) {
-                                    pos = -1;
-                                }
-                                if (pos + word.content.length !== node.data.length && /[a-z]/i.test(node.data[pos + word.content.length])) {
-                                    pos = -1;
-                                }
-                            }
-                        }
-                        if (pos >= 0) {
-                            if (typeof word.hideParent !== 'undefined') {
-                                let parentDepth = word.hideParent;
-                                let parent = node.parentElement;
-                                while(parentDepth-- > 0 && parent) {
-                                    parent = parent.parentElement;
-                                }
-                                if (parent) {
-                                    parent.innerHTML = createHTML("");
-                                    parent.dataset.content = word.showWords;
-                                    parent.classList.add("searchJumper-hide");
-                                    return 0;
-                                }
-                            }
-                            let curList = self.marks[word.showWords];
-                            let index = curList.length;
-                            spannode = document.createElement("mark");
-                            spannode.className = "searchJumper";
-                            if (word.title) spannode.title = JSON.parse('"' + word.title + '"');
-                            if (word.popup) {
-                                spannode.addEventListener("mouseenter", e => {
-                                    if (targetElement != spannode || !searchBar.funcKeyCall) {
-                                        targetElement = spannode;
-                                        searchBar.showInPage(true, e);
+                                if (typeof word.hideParent !== 'undefined') {
+                                    let parentDepth = word.hideParent;
+                                    let parent = node;
+                                    while(parentDepth-- > 0 && parent) {
+                                        parent = parent.parentElement;
                                     }
-                                });
-                            }
-                            spannode.style.cssText = word.style;
-                            spannode.addEventListener("click", e => {
-                                if (!e.altKey) return;
-                                e.stopPropagation();
-                                e.preventDefault();
-                                return false;
-                            });
-                            spannode.dataset.content = word.showWords;
-                            spannode.addEventListener("mousedown", e => {
-                                if (!e.altKey) return;
-                                let target;
-                                if (e.button === 0) {
-                                    if (index != curList.length - 1) {
-                                        self.focusIndex = index + 1;
-                                    } else self.focusIndex = 0;
-                                } else if (e.button === 2){
-                                    if (index != 0) {
-                                        self.focusIndex = index - 1;
-                                    } else self.focusIndex = curList.length - 1;
+                                    if (parent) {
+                                        parent.innerHTML = createHTML("");
+                                        parent.dataset.content = word.showWords;
+                                        parent.classList.add("searchJumper-hide");
+                                        return 0;
+                                    }
+                                } else {
+                                    let curList = self.marks[word.showWords];
+                                    let index = curList.length;
+                                    node.classList.add("searchJumper");
+                                    if (word.title) node.title = JSON.parse('"' + word.title + '"');
+                                    if (word.popup) {
+                                        node.addEventListener("mouseenter", e => {
+                                            if (targetElement != node || !searchBar.funcKeyCall) {
+                                                targetElement = node;
+                                                searchBar.showInPage(true, e);
+                                            }
+                                        });
+                                    }
+                                    if (!node.dataset.css) node.dataset.css = node.style.cssText;
+                                    if (word.style) {
+                                        node.style.cssText += word.style;
+                                    }
+                                    node.addEventListener("click", e => {
+                                        if (!e.altKey) return;
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        return false;
+                                    });
+                                    node.dataset.content = word.showWords;
+                                    node.addEventListener("mousedown", e => {
+                                        if (!e.altKey) return;
+                                        let target;
+                                        if (e.button === 0) {
+                                            if (index != curList.length - 1) {
+                                                self.focusIndex = index + 1;
+                                            } else self.focusIndex = 0;
+                                        } else if (e.button === 2){
+                                            if (index != 0) {
+                                                self.focusIndex = index - 1;
+                                            } else self.focusIndex = curList.length - 1;
+                                        }
+                                        target = curList[self.focusIndex];
+                                        self.focusHighlight(target);
+                                        self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), self.focusIndex, curList);
+                                        self.focusText = word.showWords;
+                                    });
+                                    self.marks[word.showWords].push(node);
+
+                                    self.createNavMark(node, word, index, curList);
                                 }
-                                target = curList[self.focusIndex];
-                                self.focusHighlight(target);
-                                self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), self.focusIndex, curList.length);
-                                self.focusText = word.showWords;
-                            });
-                            middlebit = node.splitText(pos);
-                            middlebit.splitText(len);
-                            middleclone = middlebit.cloneNode(true);
-                            spannode.appendChild(middleclone);
-                            middlebit.parentNode.replaceChild(spannode, middlebit);
-                            self.marks[word.showWords].push(spannode);
-
-                            let navMark = document.createElement("span");
-                            let top = getElementTop(spannode);
-                            navMark.dataset.top = top;
-                            navMark.dataset.content = word.showWords;
-                            navMark.style.top = top / document.documentElement.scrollHeight * 100 + "%";
-                            navMark.style.background = spannode.style.background || "yellow";
-                            navMark.addEventListener("click", e => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                self.focusIndex = index;
-                                self.focusHighlight(spannode);
-                                self.setHighlightSpan(self.getHighlightSpanByText(word.showWords), index, curList.length);
-                                self.navPointer.style.display = "";
-                                self.navPointer.style.top = navMark.offsetTop + 16 + "px";
-                                return false;
-                            }, true);
-                            self.navMarks.appendChild(navMark);
-
-                            skip = 1;
+                            }
                         }
-                    } else if ((!root || node === ele) &&
-                               node.nodeType == 1 &&
-                               node.childNodes &&
-                               !/^(SCRIPT|STYLE|MARK)$/i.test(node.nodeName) &&
-                               node.ariaHidden != 'true' &&
-                               node.role != "search" &&
-                               (!node.hasAttribute || node.hasAttribute('jsname') == false)) {
-                        if (!searchingPre && (node.nodeName.toUpperCase() === "PRE" || node.nodeName.toUpperCase() === "CODE")) {
+                    } else {
+                        let blockValue = "";
+                        if (node.nodeType == 1 && node.value && node.offsetParent && !/^(hidden|file|password|radio|range|checkbox|)$/i.test(node.type) && (!word.init || (!/(^wd|^kw|^q$|query|search|keyword)/i.test(node.name) && !/(^wd|^kw|^q$|query|search)/i.test(node.id)))) {
+                            blockValue = node.value;
+                        }
+                        if (blockValue) {
+                            checkChildren = false;
+                            let wordMatch = false;
+                            let lastIndex = 0;
+                            let fakeTextarea = self.fakeTextareas[node];
+                            if (insert && fakeTextarea) return 0;
+                            let nodeStyle = getComputedStyle(node);
+                            let textareaLoc = node.getBoundingClientRect();
+                            let textareaParentLoc = (node.offsetParent || getBody(document)).getBoundingClientRect();
+                            let baseLeft = textareaLoc.left - textareaParentLoc.left;
+                            let baseTop = textareaLoc.top - textareaParentLoc.top;
+                            while (true) {
+                                if (word.isRe) {
+                                    wordMatch = blockValue.match(new RegExp(word.content, word.reCase));
+                                    if (wordMatch) {
+                                        pos = wordMatch.index;
+                                        wordMatch = wordMatch[0];
+                                    }
+                                } else {
+                                    let result = self.findPosInStr(blockValue, word.content);
+                                    len = result.len;
+                                    pos = result.pos;
+                                    if ((word.init || inWordMode) && pos >= 0 && /^[a-z]+$/i.test(word.content)) {
+                                        if (pos !== 0 && /[a-z]/i.test(blockValue[pos - 1])) {
+                                            pos = -1;
+                                        }
+                                        if (pos + word.content.length !== blockValue.length && /[a-z]/i.test(blockValue[pos + len])) {
+                                            pos = -1;
+                                        }
+                                    }
+                                    wordMatch = (pos >= 0 ? blockValue.slice(pos, pos + len) : false);
+                                }
+                                if (wordMatch) {
+                                    findTextInBlock(wordMatch, lastIndex + pos);
+                                    lastIndex += (pos + wordMatch.length);
+                                    blockValue = blockValue.slice(pos + wordMatch.length);
+                                } else break;
+                            }
+                            function findTextInBlock(curWord, pos) {
+                                if (curWord) {
+                                    if (!fakeTextarea) {
+                                        fakeTextarea = document.createElement("pre");
+                                        fakeTextarea.className = "searchJumper";
+                                        let textNode = document.createTextNode(blockValue);
+                                        fakeTextarea.appendChild(textNode);
+
+                                        let name, rstyle =/^(number|string)$/;
+                                        let cssText = [], sStyle = node.style;
+
+                                        for (name in sStyle) {
+                                            if (!/^(content|outline|outlineWidth)$/.test(name)) {
+                                                let val = nodeStyle[name];
+                                                if (val !=='' && rstyle.test(typeof val)) {
+                                                    name = name.replace(/([A-Z])/g, "-$1").toLowerCase();
+                                                    cssText.push(name);
+                                                    cssText.push(':');
+                                                    cssText.push(val);
+                                                    cssText.push(';');
+                                                };
+                                            };
+                                        };
+                                        cssText = cssText.join('');
+                                        fakeTextarea.style.cssText = cssText;
+                                        fakeTextarea.style.position = "fixed";
+                                        fakeTextarea.style.left = "0px";
+                                        fakeTextarea.style.top = "0px";
+                                        fakeTextarea.style.margin = "0";
+                                        if (node.nodeName && node.nodeName.toLowerCase && node.nodeName.toLowerCase() !== "textarea") {
+                                            fakeTextarea.style.display = "inline-grid";
+                                        }
+                                        self.fakeTextareas[node] = fakeTextarea;
+                                    }
+                                    document.body.appendChild(fakeTextarea);
+                                    let range = document.createRange();
+                                    range.setStart(fakeTextarea.firstChild, pos);
+                                    range.setEnd(fakeTextarea.firstChild, pos + 1);
+                                    let rect = range.getBoundingClientRect();
+                                    document.body.removeChild(fakeTextarea);
+
+
+
+                                    if (typeof word.hideParent !== 'undefined') {
+                                        let parentDepth = word.hideParent;
+                                        let parent = node.parentElement;
+                                        while(parentDepth-- > 0 && parent) {
+                                            parent = parent.parentElement;
+                                        }
+                                        if (parent) {
+                                            parent.innerHTML = createHTML("");
+                                            parent.dataset.content = word.showWords;
+                                            parent.classList.add("searchJumper-hide");
+                                            return 0;
+                                        }
+                                    } else {
+                                        let curList = self.marks[word.showWords];
+                                        let index = curList.length;
+
+                                        let spannode = document.createElement("mark");
+                                        spannode.className = "searchJumper";
+                                        spannode.dataset.block = true;
+                                        if (word.title) spannode.title = JSON.parse('"' + word.title + '"');
+                                        spannode.style.cssText = word.style;
+                                        spannode.dataset.content = word.showWords;
+                                        spannode.innerText = curWord;
+                                        node.parentNode.appendChild(spannode);
+                                        spannode.style.fontSize = fakeTextarea.style.fontSize;
+                                        spannode.style.fontFamily = fakeTextarea.style.fontFamily;
+                                        spannode.style.lineHeight = "1";
+                                        spannode.style.padding = "0";
+                                        spannode.style.position = "absolute";
+                                        spannode.style.pointerEvents = "none";
+                                        let _baseLeft = rect.left + baseLeft;
+                                        let _baseTop = rect.top + baseTop;
+                                        spannode.style.left = _baseLeft + "px";
+                                        spannode.style.top = _baseTop + "px";
+                                        self.marks[word.showWords].push(spannode);
+                                        self.createNavMark(spannode, word, index, curList);
+                                        if (node.nodeName && node.nodeName.toLowerCase && node.nodeName.toLowerCase() == "textarea") {
+                                            let nodeScrollHandler = e => {
+                                                if (!spannode.parentNode) {
+                                                    spannode.parentNode.removeChild(spannode);
+                                                    node.removeEventListener("scroll", nodeScrollHandler);
+                                                } else {
+                                                    spannode.style.left = _baseLeft - node.scrollLeft + "px";
+                                                    spannode.style.top = _baseTop - node.scrollTop + "px";
+                                                }
+                                            }
+                                            node.addEventListener("scroll", nodeScrollHandler);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (checkChildren &&
+                        (!root ||
+                         node === ele
+                        ) &&
+                        (node.nodeType == 1 ||
+                         node.nodeType == 11
+                        ) &&
+                        node.childNodes &&
+                        !/^(SCRIPT|STYLE|MARK|SVG|TEXTAREA)$/i.test(node.nodeName) &&
+                        (!word.init ||
+                         (node.ariaHidden != 'true' &&
+                          node.role != "search" &&
+                          (!node.hasAttribute ||
+                           node.hasAttribute('jsname') == false
+                          )
+                         )
+                        )
+                       ) {
+                        if (!searchingPre && /^(PRE|CODE)$/i.test(node.nodeName)) {
                             preEles.push(node);
                         } else {
                             for (var child = 0; child < node.childNodes.length; ++child) {
                                 child = child + searchWithinNode(node.childNodes[child], word);
+                            }
+                            try {
+                                if (node.shadowRoot) {
+                                    child = child + searchWithinNode(node.shadowRoot, word);
+                                }
+                            } catch(e) {
+                                debug(e);
                             }
                         }
                     }
@@ -4450,16 +4865,19 @@
                     if (w.inRange && ele.parentNode) {
                         [].forEach.call(ele.parentNode.querySelectorAll(w.inRange), e => {
                             if (e == ele || ele.contains(e)) {
-                                searchWithinNode(e, w);
+                                searchWithinNode(e, w, true);
                             }
                         })
-                    } else searchWithinNode(ele, w);
+                    } else searchWithinNode(ele, w, true);
                 });
                 setTimeout(() => {
                     searchingPre = true;
                     words.forEach(w => {
+                        if (!self.marks[w.showWords]) {
+                            self.marks[w.showWords] = [];
+                        }
                         preEles.forEach(e => {
-                            searchWithinNode(e, w);
+                            searchWithinNode(e, w, true);
                         });
                     });
                 }, 1000);
@@ -4498,7 +4916,7 @@
                         m.style.top = m.dataset.top / document.documentElement.scrollHeight * 100 + "%";
                     });
                     this.navMarks.style.display = "";
-                }, 500);
+                }, 1000);
             }
 
             checkCharacterData(target) {
@@ -4523,7 +4941,6 @@
                 if (!value) return;
                 if (!this.lockWords && value.indexOf("$c") !== 0 && value.indexOf("$o") !== 0 && value.indexOf(" ") !== -1) {
                     this.splitSep = "◎";
-                    value = "$c" + this.splitSep + value;
                 }
                 this.searchJumperInPageInput.value = value;
                 this.submitInPageWords();
@@ -4568,13 +4985,15 @@
                 this.touched = false;
                 if (currentSite && !currentSite.hideNotMatch) {
                     this.initPos();
-                    let firstType = this.bar.querySelector('.search-jumper-type:nth-child(1)>span');
-                    if (firstType && !firstType.classList.contains("search-jumper-open")) {
-                        if (firstType.onmousedown) {
-                            firstType.onmousedown();
-                        } else {
-                            let mouseEvent = new PointerEvent("mousedown");
-                            firstType.dispatchEvent(mouseEvent);
+                    if (!searchData.prefConfig.disableAutoOpen && !searchData.prefConfig.disableTypeOpen) {
+                        let firstType = this.bar.querySelector('.search-jumper-type:nth-child(1)>span');
+                        if (firstType && !firstType.classList.contains("search-jumper-open")) {
+                            if (firstType.onmousedown) {
+                                firstType.onmousedown();
+                            } else {
+                                let mouseEvent = new PointerEvent("mousedown");
+                                firstType.dispatchEvent(mouseEvent);
+                            }
                         }
                     }
                     this.bar.style.display = ''
@@ -4651,7 +5070,7 @@
                             }
                         };
                     }
-                    document.addEventListener("mousedown", self.showAllMouseHandler);
+                    self.con.addEventListener("mousedown", self.showAllMouseHandler);
 
                     if (!self.showAllKeydownHandler) {
                         self.showAllKeydownHandler = e => {
@@ -4716,8 +5135,7 @@
                 this.contentContainer.appendChild(this.filterSites);
                 if (this.filterSitesTab.checked) {
                     this.con.classList.remove("in-find");
-                    if (!this.initShowPicker && searchData.prefConfig.defaultPicker) {
-                        this.initShowPicker = true;
+                    if (searchData.prefConfig.defaultPicker) {
                         this.togglePicker();
                     }
                     if (this.bar.classList.contains("search-jumper-isInPage")) {
@@ -4754,6 +5172,7 @@
                 this.inInput = true;
                 this.clearInputHide();
                 if (this.lockWords) this.searchJumperInPageInput.style.paddingLeft = this.searchInPageLockWords.clientWidth + 3 + "px";
+                else this.searchJumperInPageInput.style.paddingLeft = "";
                 if (searchData.prefConfig.altToHighlight) {
                     document.removeEventListener("mouseup", this.checkSelHandler);
                     document.addEventListener("mouseup", this.checkSelHandler);
@@ -4795,9 +5214,28 @@
                 }
             }
 
+            addToShadow(ele) {
+                if (!this.shadowContainer) {
+                    this.shadowContainer = document.createElement("div");
+                }
+                if (!this.shadowContainer.parentNode) {
+                    document.documentElement.appendChild(this.shadowContainer);
+                }
+                let shadow = this.shadowContainer.shadowRoot || this.shadowContainer.attachShadow({ mode: "open" });
+                shadow.appendChild(ele);
+                return true;
+            }
+
+            contains(ele) {
+                return ele == this.shadowContainer || this.bar.contains(ele);
+            }
+
             appendBar() {
-                if (!this.con.parentNode) {
-                    document.documentElement.appendChild(this.con);
+                if (!mainStyleEle || !mainStyleEle.parentNode) {
+                    mainStyleEle = _GM_addStyle(cssText);
+                    this.addToShadow(mainStyleEle);
+                }
+                if (this.addToShadow(this.con)) {
                     setTimeout(() => {
                         if (this.con.parentNode) {
                             if (getComputedStyle(this.con).zIndex != "2147483647") {
@@ -4927,7 +5365,7 @@
                 };
 
                 //Search in page
-                this.splitSep = " ";
+                this.splitSep = "◎";
                 this.lockWords = "";
                 this.marks = {};
                 this.initInPageWords = [];
@@ -4954,6 +5392,10 @@
                             this.hideSearchInput();
                         } else {
                             this.highlight("");
+                            this.lockWords = "";
+                            this.searchJumperInPageInput.value = "";
+                            this.searchInPageLockWords.innerHTML = createHTML();
+                            this.setNav(false, true);
                         }
                     }
                 });
@@ -4961,7 +5403,12 @@
                     switch(e.keyCode) {
                         case 8://退格
                             if (!this.searchJumperInPageInput.value) {
-                                editFunc();
+                                let lastWordSpan = this.searchInPageLockWords.lastChild;
+                                if (lastWordSpan) {
+                                    lastWordSpan.dispatchEvent(new CustomEvent("editword"));
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }
                             }
                             break;
                         case 9://tab
@@ -4973,11 +5420,47 @@
                             break;
                         case 13://回车
                             {
-                                let spans = this.submitInPageWords();
+                                //let spans = this.submitInPageWords();
+                                let spans = this.searchJumperInPageInput.value ? this.submitInPageWords() : [];
                                 if (spans && spans.length > 0) {
                                     let lastSpan = spans.pop();
-                                    var mouseEvent = new PointerEvent("mousedown", {button: 0});
+                                    if (this.currentSearchInPageLockWords) {
+                                        this.currentSearchInPageLockWords.firstChild.style.transform = "";
+                                    }
+                                    this.currentSearchInPageLockWords = lastSpan;
+                                    let mouseEvent = new PointerEvent("mousedown", {button: e.shiftKey ? 2 : 0});
                                     lastSpan.dispatchEvent(mouseEvent);
+                                } else if (this.lockWords) {
+                                    if (!this.currentSearchInPageLockWords) {
+                                        this.currentSearchInPageLockWords = this.searchInPageLockWords.lastChild;
+                                        this.currentSearchInPageLockWords.firstChild.style.transform = "scale(1.1)";
+                                    }
+                                    let mouseEvent = new PointerEvent("mousedown", {button: e.shiftKey ? 2 : 0});
+                                    this.currentSearchInPageLockWords.dispatchEvent(mouseEvent);
+                                }
+                            }
+                            break;
+                        case 37://←
+                            if (this.searchJumperInPageInput.value == "" && this.lockWords) {
+                                if (!this.currentSearchInPageLockWords) {
+                                    this.currentSearchInPageLockWords = this.searchInPageLockWords.lastChild;
+                                    this.currentSearchInPageLockWords.firstChild.style.transform = "scale(1.1)";
+                                } else if (this.currentSearchInPageLockWords.previousElementSibling){
+                                    this.currentSearchInPageLockWords.firstChild.style.transform = "";
+                                    this.currentSearchInPageLockWords = this.currentSearchInPageLockWords.previousElementSibling;
+                                    this.currentSearchInPageLockWords.firstChild.style.transform = "scale(1.1)";
+                                }
+                            }
+                            break;
+                        case 39://→
+                            if (this.searchJumperInPageInput.value == "" && this.lockWords) {
+                                if (!this.currentSearchInPageLockWords) {
+                                    this.currentSearchInPageLockWords = this.searchInPageLockWords.lastChild;
+                                    this.currentSearchInPageLockWords.firstChild.style.transform = "scale(1.1)";
+                                } else if (this.currentSearchInPageLockWords.nextElementSibling){
+                                    this.currentSearchInPageLockWords.firstChild.style.transform = "";
+                                    this.currentSearchInPageLockWords = this.currentSearchInPageLockWords.nextElementSibling;
+                                    this.currentSearchInPageLockWords.firstChild.style.transform = "scale(1.1)";
                                 }
                             }
                             break;
@@ -5024,6 +5507,17 @@
                     }
                     storage.setItem("globalInPageWords", globalInPageWords);
                 });
+                this.wordModeBtn.addEventListener("click", e => {
+                    let inWordMode = this.wordModeBtn.classList.contains("checked");
+                    if (inWordMode) {
+                        this.wordModeBtn.classList.remove("checked");
+                    } else {
+                        this.wordModeBtn.classList.add("checked");
+                    }
+                    if (this.lockWords) {
+                        this.refreshPageWords(this.lockWords);
+                    }
+                });
                 this.saveRuleBtn.addEventListener("click", e => {
                     if (!this.lockWords) return;
                     let inPageRule = searchData.prefConfig.inPageRule || {};
@@ -5062,6 +5556,23 @@
                         storage.setItem("disableHighlight", location.hostname);
                     } else {
                         this.setNav(false);
+                    }
+                });
+                this.minNavBtn.addEventListener("click", e => {
+                    if (this.searchJumperNavBar.classList.contains("minimize")) {
+                        this.searchJumperNavBar.classList.remove("minimize");
+                        if (this.lockWords.trim()) return;
+                        this.submitInPageWords();
+                    } else {
+                        this.searchJumperNavBar.classList.add("minimize");
+                        this.highlight("");
+                        let words = this.lockWords.trim();
+                        if (!words) return;
+                        if (this.searchJumperInPageInput.value) words += this.splitSep + this.searchJumperInPageInput.value;
+                        this.lockWords = "";
+                        this.searchJumperInPageInput.value = words;
+                        this.searchInPageLockWords.innerHTML = createHTML();
+                        this.searchJumperInPageInput.style.paddingLeft = "";
                     }
                 });
                 this.navMarks.addEventListener("click", e => {
@@ -5110,9 +5621,7 @@
                         typeEle.style.width = scrollSize;
                         typeEle.style.height = "";
                     }
-                    self.bar.style.pointerEvents = "none";
                     setTimeout(() => {
-                        self.bar.style.pointerEvents = "";
                         self.checkScroll();
                     }, 251);
                 }, showTimer;
@@ -5175,6 +5684,7 @@
                     linkEle.rel="stylesheet";
                     linkEle.href = searchData.prefConfig.fontAwesomeCss || "https://lib.baomitu.com/font-awesome/6.1.2/css/all.css";
                     document.documentElement.insertBefore(linkEle, document.documentElement.children[0]);
+                    this.addToShadow(linkEle.cloneNode());
                     waitForFontAwesome(() => {
                         let hasFont = false;
                         this.fontPool.forEach(font => {
@@ -5295,6 +5805,13 @@
                 });
                 this.closeBtn.addEventListener("mousedown", e => {
                     self.hideSearchInput();
+                    if (searchData.prefConfig.emptyAfterCloseInput) {
+                        self.highlight("");
+                        self.lockWords = "";
+                        self.searchJumperInPageInput.value = "";
+                        self.searchInPageLockWords.innerHTML = createHTML();
+                        self.setNav(false, true);
+                    }
                 });
 
                 let startLeft = window.innerWidth / 2;
@@ -5401,7 +5918,7 @@
 
                 let dragSiteBtn;
                 let dragOpenDropHandler = e => {
-                    if (!this.bar.contains(e.target)){
+                    if (!this.contains(e.target)){
                         let isPage = /^(https?|ftp):/.test(dragSiteBtn.href);
                         if (isPage) {
                             dragSiteBtn.setAttribute("target", "_blank");
@@ -5588,6 +6105,9 @@
                 let inPageWords;
                 if (searchData.prefConfig.showInSearchJumpPage && referrer && !disableHighlight) {
                     if (document.referrer.indexOf(referrer) != -1) {
+                        if (cacheKeywords) {
+                            this.wordModeBtn.classList.add("checked");
+                        }
                         inPageWords = cacheKeywords;
                         try {
                             inPageWords = decodeURIComponent(inPageWords);
@@ -5601,6 +6121,12 @@
                 if (inPageWords) {
                     this.appendBar();
                     this.setInPageWords(inPageWords);
+                } else if (!this.searchJumperInPageInput.value && document.referrer.indexOf(referrer) != -1) {
+                    inPageWords = cacheKeywords;
+                    try {
+                        inPageWords = decodeURIComponent(inPageWords);
+                    } catch (e) {}
+                    this.searchJumperInPageInput.value = inPageWords;
                 }
             }
 
@@ -5624,6 +6150,7 @@
                     }
                 }
                 this.insertHistory(this.currentType, true);
+                this.wordModeBtn.classList.add("checked");
                 let inPageWords = searchData.prefConfig.showInSearchEngine ? localKeywords : globalInPageWords;
                 if (inPageWords) {
                     this.setInPageWords(inPageWords.replace(/['";]/g, ' '));
@@ -5872,12 +6399,16 @@
                 siteEle.classList.add('current');
                 localKeywords = "";
                 if (!/#p{|^(showTips|find)/.test(data.url) && /%s[lurest]?\b/.test(data.url)) {
-                    let keywords = getKeywords();
-                    if (keywords && keywords != cacheKeywords) {
-                        cacheKeywords = keywords;
-                        storage.setItem("cacheKeywords", keywords);
-                    }
+                    this.updateCacheKeywords();
                     storage.setItem("referrer", location.hostname);
+                }
+            }
+
+            updateCacheKeywords() {
+                let keywords = getKeywords();
+                if (keywords && keywords != cacheKeywords) {
+                    cacheKeywords = keywords;
+                    storage.setItem("cacheKeywords", keywords);
                 }
             }
 
@@ -5949,7 +6480,7 @@
                             let typeBtn = this.bar.querySelector(`.search-jumper-type[data-type="${typeData.type}"]>span`);
                             if (typeBtn && !typeBtn.classList.contains("search-jumper-open")) {
                                 this.bar.insertBefore(typeBtn.parentNode, this.bar.children[0]);
-                                if (!searchData.prefConfig.disableAutoOpen) {
+                                if (!searchData.prefConfig.disableAutoOpen && !searchData.prefConfig.disableTypeOpen) {
                                     if (typeBtn.onmousedown) {
                                         typeBtn.onmousedown();
                                     } else {
@@ -6057,7 +6588,8 @@
                         } else {
                             if (self.searchJumperExpand.parentNode == typeEle && !searchData.prefConfig.expandType) {
                                 let siteBtns = typeEle.querySelectorAll("a.search-jumper-btn");
-                                let maxSiteNum = searchData.prefConfig.historyLength < 6 ? (6 + 6 - searchData.prefConfig.historyLength) : 6;
+                                let maxSiteNum = (searchData.prefConfig.numPerLine || 7) - 1;
+                                maxSiteNum = searchData.prefConfig.historyLength < maxSiteNum ? (maxSiteNum + maxSiteNum - searchData.prefConfig.historyLength) : maxSiteNum;
                                 if (siteBtns.length > maxSiteNum) {
                                     typeEle.insertBefore(btn, siteBtns[maxSiteNum]);
                                 } else typeEle.insertBefore(btn, self.searchJumperExpand);
@@ -6163,7 +6695,6 @@
                     self.bindSite(a, siteEle);
                     li.appendChild(a);
                     self.allListBtns.push(li);
-                    con.appendChild(li);
                     if (icon && !searchData.prefConfig.noIcons) {
                         let iconSrc = icon.src || icon.dataset.src;
                         let img = document.createElement("img");
@@ -6198,6 +6729,7 @@
                     li.title = siteEle.title;
                     li.dataset.name = siteEle.dataset.name;
                     a.appendChild(p);
+                    con.appendChild(li);
                 }
                 try {
                     for (let [index, siteEle] of sites.entries()) {
@@ -6228,7 +6760,7 @@
 
             listPos(ele, list) {
                 //if (this.preList) {
-                    //this.preList.style.visibility = "hidden";
+                //this.preList.style.visibility = "hidden";
                 //}
                 this.initList(list);
                 list.style = "";
@@ -6294,7 +6826,7 @@
 
             clingPos(clingEle, target, close) {
                 //if (this.preList) {
-                    //this.preList.style.visibility = "hidden";
+                //this.preList.style.visibility = "hidden";
                 //}
                 let ew = clingEle.clientWidth;
                 let eh = clingEle.clientHeight;
@@ -6449,6 +6981,7 @@
                     img.onload = e => {
                         img.style.display = "";
                         iEle.innerText = '';
+                        iEle.style.display = 'none';
                     };
                     if (/^[a-z\- ]+$/.test(icon)) {
                         let cache = searchData.prefConfig.cacheSwitch && cacheIcon[icon.trim().replace(/ /g, '_')];
@@ -6510,7 +7043,7 @@
                             (!data.meta == e.metaKey)) {
                             return;
                         }
-                        if (!searchData.prefConfig.enableInInput) {
+                        if (!searchData.prefConfig.enableInInput && !data.ctrl && !data.alt && !data.shift && !data.meta) {
                             if (inputActive(document)) return;
                         }
                         var key = (e.key || String.fromCharCode(e.keyCode)).toLowerCase();
@@ -6756,7 +7289,7 @@
                     } else {
                         self.bar.insertBefore(ele, self.bar.children[self.bar.children.length - 1]);
                     }
-                    if (!searchData.prefConfig.disableAutoOpen) {
+                    if (!searchData.prefConfig.disableAutoOpen && !searchData.prefConfig.disableTypeOpen) {
                         ele.classList.add("search-jumper-open");
                         if (sites.length > (searchData.prefConfig.expandTypeLength || 12) && !searchData.prefConfig.expandType) {
                             ele.classList.add("not-expand");
@@ -7094,6 +7627,7 @@
                 let showTips = false;
                 let tipsData;
                 let pointer = !isBookmark && /^\[/.test(data.url);
+                let description = data.description;
                 if (pointer) {
                     ele.dataset.pointer = true;
                     let siteNames = JSON.parse(data.url);
@@ -7111,6 +7645,7 @@
                                     ele.dataset.oriName = siteData.name;
                                     data = siteData;
                                     if (data.icon && icon !== "0") icon = data.icon;
+                                    if (data.description) description = data.description;
                                     break;
                                 }
                             }
@@ -7129,7 +7664,7 @@
                 let isPage = /^(https?|ftp):/.test(data.url);
                 if (isPage) ele.dataset.isPage = isPage;
                 ele.className = "search-jumper-btn";
-                if (typeof data.description !== 'undefined') ele.title = name + " - " + data.description;
+                if (typeof description !== 'undefined') ele.title = name + " - " + description;
                 ele.dataset.name = name;
                 ele.classList.add("search-jumper-word");
                 ele.dataset.inPagePost = (data.url.indexOf("#p{") != -1) ? 't' : 'f';
@@ -7190,7 +7725,7 @@
 
                 let word = document.createElement("span");
                 if (!isBookmark && name.length >= 3) {
-                    word.innerText = name.trim();
+                    word.innerText = name;
                     if (!/^[\w \-]+$/.test(word.innerText.substr(0, 3))) word.innerText = word.innerText.substr(0, 2);
                 } else word.innerText = name;
                 ele.appendChild(word);
@@ -7213,7 +7748,7 @@
                                 return;
                             }
                         }
-                        if (!searchData.prefConfig.enableInInput) {
+                        if (!searchData.prefConfig.enableInInput && !data.ctrl && !data.alt && !data.shift && !data.meta) {
                             if (inputActive(document)) return;
                         }
                         var key = (e.key || String.fromCharCode(e.keyCode)).toLowerCase();
@@ -7251,7 +7786,9 @@
                             if (ele.dataset.current && imgSrc.indexOf(location.host) != -1) {
                                 img.dataset.src = imgSrc;
                                 cacheIcon[imgSrc] = '';
-                                if (!isBookmark && !cacheIcon[imgSrc]) cachePool.push(img);
+                                if (!isBookmark) {
+                                    cacheAction(img);
+                                }
                             }
                         } else if (cache) {
                             img.dataset.src = cache;
@@ -7369,12 +7906,66 @@
                             let selector = customMatch[1];
                             let prop = customMatch[3];
                             let value = "";
-                            let ele = getElement(selector);
-                            if (ele) {
-                                if (prop) {
-                                    value = ele.getAttribute(prop) || ele[prop];
-                                } else {
-                                    value = ele.innerText;
+                            if (!selector) {
+                                try {
+                                    let selectEles = window.getSelection();
+                                    let container = document.createElement('div');
+                                    for (let i = 0, len = selectEles.rangeCount; i < len; ++i) {
+                                        container.appendChild(selectEles.getRangeAt(i).cloneContents());
+                                    }
+                                    [].forEach.call(container.querySelectorAll("style,script,svg,canvas"), ele => {
+                                        let textNode = document.createTextNode('');
+                                        ele.parentNode.replaceChild(textNode, ele);
+                                    });
+                                    document.body.appendChild(container);
+                                    if (prop) {
+                                        for (let i = 0; i < container.childNodes.length; i++) {
+                                            let childNode = container.childNodes[i];
+                                            if (childNode.nodeType == 3) {
+                                                value += childNode.nodeValue;
+                                                value += "\n";
+                                            } else if (childNode.nodeType == 1) {
+                                                value += childNode.getAttribute(prop) || childNode[prop] || "";
+                                                value += "\n";
+                                            }
+                                        }
+                                    } else {
+                                        [].forEach.call(container.querySelectorAll("img"), img => {
+                                            if (!img.src) return;
+                                            let textNode = document.createTextNode(` ![${(img.alt || "").replace(/[\n\r]/g, " ").trim()}](${img.src || ""}) `);
+                                            img.parentNode.replaceChild(textNode, img);
+                                        });
+                                        [].forEach.call(container.querySelectorAll("a"), a => {
+                                            if (!a.href) return;
+                                            let innerText = (a.innerText || "").replace(/[\n\r]+/g, "\n").trim();
+                                            if (!innerText) return;
+                                            innerText = ` [${innerText}](${a.href || ""}) `;
+                                            let newNode;
+                                            if (innerText.indexOf("\n") == -1) {
+                                                newNode = document.createTextNode(innerText);
+                                            } else {
+                                                newNode = document.createElement("pre");
+                                                newNode.innerHTML = createHTML(innerText);
+                                            }
+                                            a.parentNode.replaceChild(newNode, a);
+                                        });
+                                        value = container.innerText;
+                                    }
+                                    if (value) {
+                                        value = value.replace(/[\n\r]\s*/g, "\n");
+                                    }
+                                    document.body.removeChild(container);
+                                } catch(e) {
+                                    console.error(e);
+                                }
+                            } else {
+                                let ele = getElement(selector);
+                                if (ele) {
+                                    if (prop) {
+                                        value = ele.getAttribute(prop) || ele[prop];
+                                    } else {
+                                        value = ele.innerText;
+                                    }
                                 }
                             }
                             str = customReplaceSingle(str, customMatch[0], value);
@@ -7441,11 +8032,11 @@
                         if (targetElement.nodeName.toUpperCase() == 'IMG' && /%i\b/.test(data.url)) {
                             if (targetElement.src) {
                                 if (/^data/.test(targetElement.src)) {
-                                    resultUrl = resultUrl.replace(/%i\b/g, targetElement.src);
+                                    imgBase64 = targetElement.src;
                                 } else {
                                     imgBase64 = await image2Base64(targetElement);
-                                    resultUrl = resultUrl.replace(/%i\b/g, imgBase64);
                                 }
+                                resultUrl = resultUrl.replace(/%i\b/g, imgBase64);
                             }
                         } else if ((targetElement.nodeName.toUpperCase() == 'A' || (targetElement.parentNode && targetElement.parentNode.nodeName.toUpperCase() == 'A')) && hasWordParam && !keywords) {
                             if (targetElement.textContent.trim()) keywords = targetElement.textContent.trim();
@@ -7489,15 +8080,38 @@
                     }
                     let targetBaseUrl = targetUrl.replace(/^https?:\/\//i, "");
                     if (!keywords) keywords = (currentSite && cacheKeywords);
-                    if (!keywords && hasWordParam && typeof navigator.clipboard.readText !== "undefined") {
-                        try {
-                            keywords = await navigator.clipboard.readText();
-                            if (keywords && !_keyWords) {
-                                inputString = keywords;
+                    try {
+                        if (typeof navigator.clipboard.readText !== "undefined") {
+                            if (!keywords && hasWordParam) {
+                                keywords = await navigator.clipboard.readText();
+                                if (keywords && !_keyWords) {
+                                    inputString = keywords;
+                                }
                             }
-                        } catch(e) {
-                            return false;
+                            if (!imgBase64 && /%i\b/.test(data.url)) {
+                                const permission = await navigator.permissions.query({
+                                    name: "clipboard-read",
+                                });
+                                if (permission.state !== "denied") {
+                                    const clipboardContents = await navigator.clipboard.read();
+                                    for (const item of clipboardContents) {
+                                        if (item.types.includes("image/png")) {
+                                            const blob = await item.getType("image/png");
+                                            imgBase64 = await new Promise(resolve => {
+                                                const reader = new FileReader();
+                                                reader.onload = function (e) {
+                                                    resolve(e.target && e.target.result);
+                                                };
+                                                reader.readAsDataURL(blob);
+                                            });
+                                            if (imgBase64) resultUrl = resultUrl.replace(/%i\b/g, imgBase64);
+                                        }
+                                    }
+                                }
+                            }
                         }
+                    } catch(e) {
+                        console.error(e.message);
                     }
                     if (!keywords && hasWordParam) {
                         self.customInput = true;
@@ -7817,6 +8431,9 @@
                         _unsafeWindow.targetElement = targetElement;
                         _unsafeWindow.keywords = getKeywords();
                         targetUrlData = targetUrlData.replace(/^javascript:/, '');
+                        try {
+                            targetUrlData = decodeURIComponent(targetUrlData);
+                        } catch(e) {}
                         let func = (/^[_a-zA-Z0-9]+$/.test(targetUrlData) && window[targetUrlData]) || new AsyncFunction(targetUrlData);
                         if (func) func();
                         return false;
@@ -8229,6 +8846,7 @@
                     if (!this.con.classList.contains("search-jumper-scroll")) {
                         this.bar.style.cssText = "";
                         this.con.classList.add("search-jumper-scroll");
+                        this.con.style.display = "";
                     }
                 } else {
                     if (this.con.classList.contains("search-jumper-scroll")) {
@@ -8246,24 +8864,27 @@
                         firstType.style.height = "auto";
                     }
                     if (firstType != this.bar.firstElementChild) {
-                        firstType.scrollIntoView(noSmooth ? {} : {behavior: "smooth"});
+                        setTimeout(() => {
+                            firstType.scrollIntoView(noSmooth ? {} : {behavior: "smooth"});
+                        }, 0);
                     }
                 }
             }
 
             showInPage(_funcKeyCall, e) {
-                if (this.bar.contains(targetElement) || this.inInput || (!_funcKeyCall && this.funcKeyCall)) {
+                if (this.contains(targetElement) || this.inInput || (!_funcKeyCall && this.funcKeyCall)) {
                     return;
                 }
                 if (!mainStyleEle || !mainStyleEle.parentNode) {
                     mainStyleEle = _GM_addStyle(cssText);
+                    this.addToShadow(mainStyleEle);
                 }
                 let selectStr = getSelectStr();
                 if (_funcKeyCall && selectStr && selectStr.length < (searchData.prefConfig.limitPopupLen || 1)) return;
                 if (this.con && this.con.classList.contains("search-jumper-showall")) return;
                 if (searchData.prefConfig.hidePopup) _funcKeyCall = false;
                 if (!targetElement) targetElement = getBody(document);
-                else if (targetElement != getBody(document) && (targetElement.className != "searchJumper" || !/^MARK$/i.test(targetElement.nodeName))) {
+                else if (!selectStr && targetElement != getBody(document) && (targetElement.className != "searchJumper" || !/^MARK$/i.test(targetElement.nodeName))) {
                     let _targetElement = targetElement, children;
                     while (_targetElement && _targetElement.nodeName) {
                         if (_targetElement.nodeName.toUpperCase() == 'IMG' || _targetElement.nodeName.toUpperCase() == 'AUDIO' || _targetElement.nodeName.toUpperCase() == 'VIDEO' || _targetElement.nodeName.toUpperCase() == 'A') break;
@@ -8372,7 +8993,7 @@
                 }
                 self.setFuncKeyCall(false);
                 if (firstType) {
-                    if (!searchData.prefConfig.disableAutoOpen || _funcKeyCall) {
+                    if ((!searchData.prefConfig.disableAutoOpen && !searchData.prefConfig.disableTypeOpen) || _funcKeyCall) {
                         let mouseEvent = new PointerEvent("mousedown");
                         if (firstType.parentNode.classList.contains('search-jumper-open')) {
                             if (firstType.onmousedown) firstType.onmousedown();
@@ -8387,7 +9008,7 @@
                         self.insertHistory(firstType.parentNode);
                     }
                 }
-                if (!_funcKeyCall && searchData.prefConfig.disableAutoOpen) {
+                if (!_funcKeyCall && (searchData.prefConfig.disableAutoOpen || searchData.prefConfig.disableTypeOpen)) {
                     let openType = this.bar.querySelector('.search-jumper-type.search-jumper-open>span');
                     if (openType) {
                         if (openType.onmousedown) {
@@ -8621,23 +9242,35 @@
                 searchData.prefConfig.position.y = relY;
                 searchData.prefConfig.offset.x = posX;
                 searchData.prefConfig.offset.y = posY;
-                self.checkScroll(false, true);
-                setTimeout(() => {
-                    if (!searchData.prefConfig.disableAutoOpen) {
-                        if (self.currentType && self.currentType.classList.contains('search-jumper-open')) {
-                            self.currentType.style.width = self.currentType.scrollWidth + "px";
-                            self.currentType.style.height = self.currentType.scrollHeight + "px";
-                        }
-                    }
+                if (searchData.prefConfig.disableAutoOpen || searchData.prefConfig.disableTypeOpen) {
                     self.checkScroll(false, true);
-                }, 251);
+                } else {
+                    setTimeout(() => {
+                        let openType = self.bar.querySelector('.search-jumper-type.search-jumper-open');
+                        if (openType) {
+                            openType.style.transition = "none";
+                            openType.style.width = "auto";
+                            openType.style.height = "auto";
+                            setTimeout(() => {
+                                openType.style.width = openType.scrollWidth + "px";
+                                openType.style.height = openType.scrollHeight + "px";
+                                setTimeout(() => {
+                                    openType.style.transition = "";
+                                }, 1);
+                                self.checkScroll(false, true);
+                            }, 0);
+                        }
+                    }, 251);
+                }
             }
         }
 
         class Picker {
             //static picker;
             constructor() {
-                this.init();
+                this.clickedIndex = 0;
+                this.signList = [];//所有标记
+                this.clickedEles = {};//点击的元素
             }
 
             /*static getInstance() {
@@ -8654,10 +9287,9 @@
             }
 
             init() {
+                if (this.inited) return;
+                this.inited = true;
                 let self = this;
-                this.clickedIndex = 0;
-                this.signList = [];//所有标记
-                this.clickedEles = {};//点击的元素
                 let cssText = `
                  body.searchJumper-picker,
                  body.searchJumper-picker *:hover,
@@ -8762,6 +9394,7 @@
             }
 
             close() {
+                if (!this.mainSignDiv) return;
                 this.callback = null;
                 this.clearSigns();
                 this.clickedEles = {};
@@ -8913,6 +9546,7 @@
             }
 
             toggle() {
+                this.init();
                 if (this.inPicker) {
                     this.close();
                     return;
@@ -9168,7 +9802,11 @@
                 canvas.height = img.naturalHeight || img.height || parseInt(imgStyle.height);
                 var ctx = canvas.getContext("2d");
                 ctx.drawImage(img, 0, 0);
-                return (canvas.toDataURL("image/png"));
+                try {
+                    return (canvas.toDataURL("image/png"));
+                } catch (e) {
+                    return await imageSrc2Base64(img.src);
+                }
             } else {
                 return await imageSrc2Base64(img.src);
             }
@@ -9180,19 +9818,19 @@
                 _GM_xmlhttpRequest({
                     method: 'GET',
                     url: src,
-                    responseType:'arraybuffer',
+                    responseType:'blob',
                     headers: {
                         origin: urlSplit[0] + "//" + urlSplit[2],
                         referer: src,
                         accept: "*/*"
                     },
                     onload: function(d) {
-                        var binary = '';
-                        var bytes = new Uint8Array(d.response);
-                        for (var len = bytes.byteLength, i = 0; i < len; i++) {
-                            binary += String.fromCharCode(bytes[i]);
-                        }
-                        resolve(`data:image/jpeg;base64,${window.btoa(binary)}`);
+                        var blob = d.response;
+                        var fr = new FileReader();
+                        fr.readAsDataURL(blob);
+                        fr.onload = function (e) {
+                            resolve(e.target.result);
+                        };
                     },
                     onerror: function(){
                         resolve(null);
@@ -9594,7 +10232,7 @@
 
             searchBar.bar.addEventListener(getSupportWheelEventName(), e => {
                 if (e.target.parentNode && (e.target.parentNode.className == "sitelistCon" ||
-                    (e.target.parentNode.parentNode && e.target.parentNode.parentNode.className == "sitelistCon"))) return;
+                                            (e.target.parentNode.parentNode && e.target.parentNode.parentNode.className == "sitelistCon"))) return;
                 let targetClassList = searchBar.con.classList;
                 if (!targetClassList.contains('search-jumper-scroll')) return;
                 if (targetClassList.contains('search-jumper-left') ||
@@ -9643,9 +10281,9 @@
                 }
             });
             if (searchData.prefConfig.switchSitesPreKey ||
-               searchData.prefConfig.switchSitesNextKey ||
-               searchData.prefConfig.shortcutKey ||
-               searchData.prefConfig.showAllShortcutKey) {
+                searchData.prefConfig.switchSitesNextKey ||
+                searchData.prefConfig.shortcutKey ||
+                searchData.prefConfig.showAllShortcutKey) {
                 let inputing = -1, key = false;
                 let checkShortcutEnable = (e, _alt, _ctrl, _shift, _meta, _key) => {
                     if ((_alt && !e.altKey) ||
@@ -9660,7 +10298,7 @@
                     }
                     if (!searchData.prefConfig.enableInInput && inputing == -1) {
                         inputing = 1;
-                        if (inputActive(document)) return false;
+                        if (!_ctrl && !_alt && !_shift && !_meta && inputActive(document)) return false;
                     }
                     inputing = 0;
                     e.preventDefault();
@@ -9698,7 +10336,7 @@
                             searchBar.switchSite(true);
                         }
                     }
-                });
+                }, true);
             }
             let clickHandler;
             if (searchData.prefConfig.enableInPage) {
@@ -9727,10 +10365,8 @@
                 };
                 let mouseDownHandler = e => {
                     if ((waitForMouse && e.type === 'mousedown' && e.button === 0) ||
-                        e.target.nodeName.toUpperCase() === 'CANVAS' ||
-                        e.target.nodeName.toUpperCase() === 'HTML' ||
                         (e.target.classList && e.target.classList.contains('search-jumper-btn')) ||
-                        searchBar.bar.contains(e.target)) {
+                        searchBar.contains(e.target)) {
                         return;
                     }
                     if (searchBar.bar.classList.contains("grabbing")) return;
@@ -9802,7 +10438,7 @@
                     };
                     let inpageMouseUpHandler = e => {
                         draging = false;
-                        if (searchBar.bar.contains(e.target) || shown) {
+                        if (searchBar.contains(e.target) || shown) {
                             e.preventDefault();
                         } else {
                             setTimeout(() => {
@@ -9885,8 +10521,13 @@
                         (searchData.prefConfig.dragMeta && !e.metaKey)) {
                         return;
                     }
+                    if (!searchData.prefConfig.enableInInput && !e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && inputActive(document)) {
+                        return;
+                    }
                     targetElement = e.target;
+                    if (targetElement.shadowRoot) return;
                     if (targetElement.getAttribute && targetElement.getAttribute("draggable") == "true") return;
+                    if (targetElement.parentNode && targetElement.parentNode.getAttribute && targetElement.parentNode.getAttribute("draggable") == "true") return;
                     showDragSearch(e.clientX, e.clientY);
                     searchBar.waitForHide(1);
                     if (clickHandler) document.removeEventListener('click', clickHandler, true);
@@ -9904,21 +10545,22 @@
             let changeHandler = e => {
                 setTimeout(() => {
                     searchBar.refresh();
-                    if (!mainStyleEle || !mainStyleEle.parentNode) {
-                        mainStyleEle = _GM_addStyle(cssText);
-                    }
                 }, 100);
-                setTimeout(() => {
-                    if (!mainStyleEle || !mainStyleEle.parentNode) {
-                        mainStyleEle = _GM_addStyle(cssText);
-                    }
-                }, 1000);
             }
             document.addEventListener("fullscreenchange", e => {
                 if (document.fullscreenElement) {
                     searchBar.bar.style.display = 'none';
                 }
             })
+            getBody(document).addEventListener("click", e => {
+                if (currentSite && e.target) {
+                    if (e.target.nodeName && e.target.nodeName.toLowerCase && e.target.nodeName.toLowerCase() == 'a') {
+                        searchBar.updateCacheKeywords();
+                    } else if (e.target.parentNode && e.target.parentNode.nodeName && e.target.parentNode.nodeName.toLowerCase && e.target.parentNode.nodeName.toLowerCase() == 'a') {
+                        searchBar.updateCacheKeywords();
+                    }
+                }
+            }, true);
             let href = location.href;
             let _wr = function(type) {
                 var orig = history[type];
@@ -9944,7 +10586,7 @@
                 }
             });
 
-            let headObserverOptions = {
+            /*let headObserverOptions = {
                 childList: true
             };
             let checkCssEle = ele => {
@@ -9961,7 +10603,7 @@
                     }
                 }
             });
-            headObserver.observe(document.head, headObserverOptions);
+            headObserver.observe(document.head, headObserverOptions);*/
 
             let removeMark = node => searchBar.removeMark(node);
             let highlight = (words, node) => searchBar.highlight(words, node);
@@ -10011,6 +10653,33 @@
             bodyObserver.observe(getBody(document), bodyObserverOptions);
         }
 
+        function canonicalUri(src) {
+            if (!src) {
+                return "";
+            }
+            if (src.charAt(0) == "#") return location.href + src;
+            if (src.charAt(0) == "?") return location.href.replace(/^([^\?#]+).*/, "$1" + src);
+            let origin = location.protocol + '//' + location.host;
+            let base = document.querySelector("base");
+            let basePath = base ? base.href : location.href;
+            let url = basePath || origin;
+            url = url.replace(/(\?|#).*/, "");
+            if (/https?:\/\/[^\/]+$/.test(url)) url = url + '/';
+            if (url.indexOf("http") !== 0) url = origin + url;
+            var root_page = /^[^\?#]*\//.exec(url)[0],
+                root_domain = /^\w+\:\/\/\/?[^\/]+/.exec(root_page)[0],
+                absolute_regex = /^\w+\:\/\//;
+            while (src.indexOf("../") === 0) {
+                src = src.substr(3);
+                root_page = root_page.replace(/\/[^\/]+\/$/, "/");
+            }
+            src = src.replace(/\.\//, "");
+            if (/^\/\/\/?/.test(src)) {
+                src = location.protocol + src;
+            }
+            return (absolute_regex.test(src) ? src : ((src.charAt(0) == "/" ? root_domain : root_page) + src));
+        }
+
         function quickAddByInput(input) {
             let parentForm, url = location.href, showCrawl = false;
             if (input && input.name) {
@@ -10038,7 +10707,7 @@
                 return true;
             }
             if (parentForm) {
-                url = parentForm.action;
+                url = canonicalUri(parentForm.getAttribute("action"));
                 let params = [];
                 let formData = new FormData(parentForm);
                 for (let [key, value] of formData) {
@@ -10142,8 +10811,8 @@
                     clearTimeout(sendMessageTimer);
                     if (cachePool.length > 0 && searchData.prefConfig.cacheSwitch) {
                         debug(`Start cache ${cachePool.length} icons!`);
+                        cacheImgManager();
                     }
-                    cacheImgManager();
                 });
 
                 document.addEventListener('downloadCache', e => {
@@ -10239,14 +10908,16 @@
                         });
                         storage.setItem("cacheIcon", newCache);
                         if (searchData.prefConfig.cacheSwitch) {
-                            _GM_notification(i18n('startCache'));
                             searchBar.con.classList.add("in-input");
                             searchBar.con.style.visibility = "hidden";
                             searchBar.appendBar();
                             setTimeout(() => {
                                 cacheFontManager(true);
                             }, 2000);
-                            cacheImgManager(true);
+                            if (cachePool.length > 0) {
+                                _GM_notification(i18n('startCache'));
+                                cacheImgManager(true);
+                            }
                         }
                     }
                     preSwitch = searchData.prefConfig.cacheSwitch;
@@ -10759,7 +11430,7 @@
             }
         }
 
-        var dragRoundFrame, dragCon, dragSiteCurSpans, dragSiteHistorySpans, dragEndHandler, dragenterHandler, dragCssEle, dragCssText, openAllTimer;
+        var dragRoundFrame, dragCon, dragSiteCurSpans, dragSiteHistorySpans, dragEndHandler, dragenterHandler, openAllTimer;
         function showDragSearch(left, top) {
             if (!searchBar || !searchBar.bar) return;
             let removeFrame = () => {
@@ -10773,13 +11444,14 @@
                 draging = false;
                 clearTimeout(openAllTimer);
             };
+            let zoomDrag = (searchData.prefConfig.zoomDrag || 100) / 100;
             if (!dragRoundFrame) {
-                dragCssText = `
+                let dragCssText = `
                     #dragCon {
                       position: fixed;
                       top: 0;
                       left: 0;
-                      transform: scale(${searchBar.scale});
+                      transform: scale(${zoomDrag});
                       z-index: 2147483647;
                     }
                     #searchJumperWrapper * {
@@ -10792,6 +11464,8 @@
                       font-size: 12px;
                       line-height: normal;
                       overflow: visible;
+                      background-image: initial;
+                      float: initial;
                     }
                     #searchJumperWrapper {
                       position: fixed;
@@ -10806,9 +11480,9 @@
                       box-sizing: content-box;
                       opacity: 0;
                       transform: scale(.5);
-                      -moz-transition:opacity 0.3s ease, transform 0.3s;
-                      -webkit-transition:opacity 0.3s ease, transform 0.3s;
-                      transition:opacity 0.3s ease, transform 0.3s;
+                      -moz-transition:opacity 0.3s ease, transform 0.15s;
+                      -webkit-transition:opacity 0.3s ease, transform 0.15s;
+                      transition:opacity 0.3s ease, transform 0.15s;
                     }
                     #searchJumperWrapper>.panel {
                       position: relative;
@@ -10928,7 +11602,7 @@
                       pointer-events: none;
                     }
                 `;
-                dragCssEle = _GM_addStyle(dragCssText);
+                let dragCssEle = _GM_addStyle(dragCssText);
                 dragSiteCurSpans = [];
                 dragSiteHistorySpans = [];
                 dragRoundFrame = document.createElement("div");
@@ -10937,6 +11611,7 @@
                 <div class="panel"></div>
                 <div class="dragLogo">${logoBtnSvg}</div>
                 `);
+                dragRoundFrame.appendChild(dragCssEle);
                 const sector1Num = 6;
                 const sector2Num = 10;
                 let sectorCon = dragRoundFrame.querySelector(".panel");
@@ -10946,10 +11621,12 @@
                 let sector2Start = -sector2Gap / 2;
                 let dragSector;
                 let dragLogo = dragRoundFrame.querySelector(".dragLogo");
+                let removeTimer;
                 dragLogo.addEventListener("dragover", e => {
                     e.preventDefault();
                 }, true);
                 dragLogo.addEventListener("dragenter", e => {
+                    clearTimeout(removeTimer);
                     if (dragSector) {
                         dragSector.style.transform = `rotate(${dragSector.dataset.deg}deg) ${searchData.prefConfig.hideDragHistory ? 'scale(1.2)' : ''}`;
                         dragSector.classList.remove("over");
@@ -10962,7 +11639,7 @@
                         removeFrame();
                         searchBar.appendBar();
                         searchBar.showAllSites();
-                    }, 800);
+                    }, 1000);
                 }, true);
                 let geneSector = (className, deg, spanTransform) => {
                     let sector = document.createElement("div");
@@ -10981,13 +11658,14 @@
                         e.preventDefault();
                     }, true);
                     sectorSpan.addEventListener("dragenter", e => {
+                        clearTimeout(removeTimer);
                         if (!sectorSpan.innerText) return;
                         if (dragSector) {
                             dragSector.style.transform = `rotate(${dragSector.dataset.deg}deg) ${searchData.prefConfig.hideDragHistory ? 'scale(1.2)' : ''}`;
                             dragSector.classList.remove("over");
                         }
                         dragLogo.style.transform = "";
-                        sector.style.transform = `scale(${searchData.prefConfig.hideDragHistory ? '1.6' : '1.35'}) ${transform}`;
+                        sector.style.transform = `scale(${searchData.prefConfig.hideDragHistory ? '1.6' : '1.25'}) ${transform}`;
                         sector.classList.add("over");
                         dragSector = sector;
                         clearTimeout(openAllTimer);
@@ -11022,16 +11700,17 @@
                 });
                 let minClientX, maxClientX, minClientY, maxClientY;
                 dragenterHandler = e => {
-                    if (!dragRoundFrame.contains(e.target)){
-                        removeFrame();
-                        return;
+                    clearTimeout(removeTimer);
+                    if (!dragRoundFrame.contains(e.target)) {
+                        removeTimer = setTimeout(() => {
+                            removeFrame();
+                        }, 300);
                     }
                 };
                 dragCon = document.createElement("div");
                 dragCon.id = "dragCon";
                 dragCon.appendChild(dragRoundFrame);
             }
-            if (!dragCssEle || !dragCssEle.parentNode) dragCssEle = _GM_addStyle(dragCssText);
             searchBar.recoveHistory();
             let firstType = searchBar.autoGetFirstType();
             let siteBtns = firstType.querySelectorAll("a.search-jumper-btn:not(.notmatch)");
@@ -11101,8 +11780,8 @@
                     if (src) img.src = src;
                 }
             });
-            let scaleWidth = searchBar.scale * 190;
-            let scaleHeight = searchBar.scale * 190;
+            let scaleWidth = zoomDrag * 190;
+            let scaleHeight = zoomDrag * 190;
 
             if (left - scaleWidth < 0) {
                 left = scaleWidth;
@@ -11120,7 +11799,7 @@
             dragRoundFrame.style.transform = '';
             setTimeout(() => {
                 document.addEventListener('dragend', dragEndHandler, true);
-                document.documentElement.appendChild(dragCon);
+                searchBar.addToShadow(dragCon);
                 setTimeout(() => {
                     dragRoundFrame.style.opacity = 1;
                     dragRoundFrame.style.transform = 'scale(1)';
@@ -11135,10 +11814,10 @@
             }, 0);
         }
 
-        var addFrame, nameInput, descInput, urlInput, iconInput, iconShow, iconsCon, typeSelect, testBtn, cancelBtn, addBtn, addFrameCssText, addFrameCssEle, siteKeywords, siteMatch, openSelect, crawlBtn;
+        var addFrame, nameInput, descInput, urlInput, iconInput, iconShow, iconsCon, typeSelect, testBtn, cancelBtn, addBtn, siteKeywords, siteMatch, openSelect, crawlBtn;
         function showSiteAdd(name, description, url, icons, charset, kwFilter, showCrawl) {
             if (!addFrame) {
-                addFrameCssText = `
+                let addFrameCssText = `
                     .searchJumperFrame-body,
                     .searchJumperFrame-crawlBody {
                         width: 300px;
@@ -11396,7 +12075,7 @@
                       }
                     }
                 `;
-                addFrameCssEle = _GM_addStyle(addFrameCssText);
+                let addFrameCssEle = _GM_addStyle(addFrameCssText);
                 addFrame = document.createElement("div");
                 addFrame.innerHTML = createHTML(`
                 <div class="searchJumperFrame-body">
@@ -11457,6 +12136,7 @@
                     </div>
                 </div>
                 `);
+                addFrame.appendChild(addFrameCssEle);
                 nameInput = addFrame.querySelector("[name='siteName']");
                 descInput = addFrame.querySelector("[name='description']");
                 urlInput = addFrame.querySelector("[name='url']");
@@ -11751,9 +12431,8 @@
                     addFrame.classList.remove("crawling");
                 });
             }
-            if (!addFrameCssEle || !addFrameCssEle.parentNode) addFrameCssEle = _GM_addStyle(addFrameCssText);
             crawlBtn.style.display = showCrawl ? '' : 'none';
-            getBody(document).appendChild(addFrame);
+            searchBar.addToShadow(addFrame);
             siteKeywords.value = "";
             siteMatch.value = "";
             nameInput.value = name;
@@ -11773,7 +12452,7 @@
                     iconShow.src = icons[0];
                 }
             } else {
-                iconShow.style.display = "none";
+                iconShow.src = location.origin + "/favicon.ico";
             }
             iconsCon.innerHTML = createHTML();
             if (icons && icons.length > 1) {
@@ -11868,8 +12547,32 @@
 
         function initMycroft() {
             if (location.hostname !== "mycroftproject.com") return;
+            _GM_addStyle(`
+                 .searchJumper-loading {
+                     animation-name: changeScale;
+                     animation-duration: 2.5s;
+                     animation-iteration-count: infinite;
+                 }
+                 @keyframes changeScale {
+                     0% {
+                         -webkit-transform:rotate(0deg) scale(1);
+                         -moz-transform:rotate(0deg) scale(1);
+                         transform:rotate(0deg) scale(1);
+                     }
+                     50% {
+                         -webkit-transform:rotate(180deg) scale(1.5);
+                         -moz-transform:rotate(180deg) scale(1.5);
+                         transform:rotate(180deg) scale(1.5);
+                     }
+                     100% {
+                         -webkit-transform:rotate(360deg) scale(1);
+                         -moz-transform:rotate(360deg) scale(1);
+                         transform:rotate(360deg) scale(1);
+                     }
+                 }
+            `);
             let checkLinks = () => {
-                let installLinks = document.querySelectorAll("img.icon+a");
+                let installLinks = document.querySelectorAll("img.icon~a[href^='/install']");
                 if (installLinks.length <= 0) return;
                 let isLoading = false;
                 [].forEach.call(installLinks, installLink => {
@@ -12104,6 +12807,12 @@
             //旧版兼容
             if (typeof searchData.prefConfig.customSize === "undefined") {
                 searchData.prefConfig.customSize = 100;
+            }
+            if (typeof searchData.prefConfig.tilesZoom === "undefined") {
+                searchData.prefConfig.tilesZoom = 100;
+            }
+            if (typeof searchData.prefConfig.tipsZoom === "undefined") {
+                searchData.prefConfig.tipsZoom = 100;
             }
             if (typeof searchData.prefConfig.typeOpenTime === "undefined") {
                 searchData.prefConfig.typeOpenTime = 250;

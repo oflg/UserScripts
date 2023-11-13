@@ -10,7 +10,7 @@
 // @name:fr      Pagetual
 // @name:it      Pagetual
 // @namespace    hoothin
-// @version      1.9.36.71
+// @version      1.9.36.88
 // @description  Perpetual pages - powerful auto-pager script. Auto loading next paginated web pages and inserting into current page. Support thousands of web sites without any rule.
 // @description:zh-CN  终极自动翻页 - 加载并拼接下一分页内容至当前页尾，智能适配任意网页
 // @description:zh-TW  終極自動翻頁 - 加載並拼接下一分頁內容至當前頁尾，智能適配任意網頁
@@ -70,14 +70,24 @@
         }, 1000);
     };
     if (window.name === 'pagetual-iframe' || (window.frameElement && window.frameElement.name === 'pagetual-iframe')) {
+        [].forEach.call(document.querySelectorAll("iframe"), iframe => {
+            iframe.name = 'pagetual-iframe';
+        });
         var domloaded = function() {
             window.parent.postMessage('pagetual-iframe:DOMLoaded', '*');
-            pauseVideo();
         };
         if (window.opera) {
             document.addEventListener('DOMContentLoaded', domloaded, false);
+            pauseVideo();
         } else {
             domloaded();
+            if (document.readystate == 'complete') {
+                pauseVideo();
+            } else {
+                window.addEventListener('load', e => {
+                    pauseVideo();
+                }, false);
+            }
         }
         if (getComputedStyle(document.documentElement).display == 'none') document.documentElement.style.display = 'block';
         if (document.body && getComputedStyle(document.body).display == 'none') document.body.style.display = 'block';
@@ -88,13 +98,6 @@
         try {
             if (window.self.innerWidth < 300 || window.self.innerHeight < 300) {
                 return;
-            }
-            if (document.readystate == 'complete') {
-                pauseVideo();
-            } else {
-                window.addEventListener('load', e => {
-                    pauseVideo();
-                }, false);
             }
         } catch(e) {
             return;
@@ -123,7 +126,7 @@
                 firstUpdate: "Click here to initialize the rules",
                 update: "Update online rules",
                 click2update: "Click to update rules from url now",
-                loadNow: "Load next page automatically",
+                loadNow: "Load next automatically",
                 loadConfirm: "How much pages do you want to load? (0 means infinite)",
                 noNext: "No next link found, please create a new rule",
                 passSec: "Updated #t# seconds ago",
@@ -211,7 +214,7 @@
                 outOfDate: "The script is outdated, update to the latest version in time!",
                 hideBarTips: "Hide the pagination bar, toggle immersive experience",
                 setConfigPage: "Set current page as the default configuration page",
-                wedata2github: "Change the wedate address to the mirror address in the github repository",
+                wedata2github: "Change the wedata address to the mirror address in the github repository",
                 addOtherProp: "Add rule property",
                 addNextSelector: "Add selector content as nextLink",
                 addPageSelector: "Add selector content as pageElement",
@@ -855,10 +858,10 @@
     const allOfBody = "body>*";
     const mainSel = "article,.article,[role=main],main,.main,#main";
     const nextTextReg1 = new RegExp("\u005e\u7ffb\u003f\u005b\u4e0b\u540e\u5f8c\u6b21\u005d\u005b\u4e00\u30fc\u0031\u005d\u003f\u005b\u9875\u9801\u5f20\u5f35\u005d\u007c\u005e\u006e\u0065\u0078\u0074\u005b\u0020\u005f\u002d\u005d\u003f\u0070\u0061\u0067\u0065\u005c\u0073\u002a\u005b\u203a\u003e\u2192\u00bb\u005d\u003f\u0024\u007c\u6b21\u306e\u30da\u30fc\u30b8\u007c\u005e\u6b21\u3078\u003f\u0024\u007cВперед", "i");
-    const nextTextReg2 = new RegExp("\u005e\u0028\u005b\u4e0b\u540e\u5f8c\u6b21\u005d\u005b\u4e00\u30fc\u0031\u005d\u003f\u005b\u7ae0\u8bdd\u8a71\u8282\u7bc0\u4e2a\u500b\u5e45\u005d\u007c\u006e\u0065\u0078\u0074\u002e\u003f\u0063\u0068\u0061\u0070\u0074\u0065\u0072\u0029\u0028\u005b\u003a\uff1a\u005c\u005c\u002d\u005f\u2014\u0020\u005c\u005c\u002e\u3002\u003e\u0023\u00b7\u005c\u005c\u005b\u3010\u3001\uff08\u005c\u005c\u0028\u002f\u002c\uff0c\uff1b\u003b\u2192\u005d\u007c\u0024\u0029", "i");
+    const nextTextReg2 = new RegExp("\u005e\u0028\u005b\u4e0b\u540e\u5f8c\u6b21\u005d\u005b\u4e00\u30fc\u0031\u005d\u003f\u005b\u7ae0\u8bdd\u8a71\u8282\u7bc0\u5e45\u005d\u007c\u006e\u0065\u0078\u0074\u002e\u003f\u0063\u0068\u0061\u0070\u0074\u0065\u0072\u0029\u0028\u005b\u003a\uff1a\u005c\u005c\u002d\u005f\u2014\u0020\u005c\u005c\u002e\u3002\u003e\u0023\u00b7\u005c\u005c\u005b\u3010\u3001\uff08\u005c\u005c\u0028\u002f\u002c\uff0c\uff1b\u003b\u2192\u005d\u007c\u0024\u0029", "i");
     const lazyImgAttr = ["data-lazy-src", "data-lazy", "data-url", "data-orig-file", "zoomfile", "file", "original", "load-src", "imgsrc", "real_src", "src2", "origin-src", "data-lazyload", "data-lazyload-src", "data-lazy-load-src", "data-ks-lazyload", "data-ks-lazyload-custom", "data-src", "data-defer-src", "data-actualsrc", "data-cover", "data-original", "data-thumb", "data-imageurl", "data-placeholder", "lazysrc"];
     var rulesData = {uninited: true}, ruleUrls, updateDate, clickedSth = false;
-    var isPause = false, manualPause = false, isHideBar = false, isLoading = false, curPage = 1, forceState = 0, autoScroll = 0, autoScrollInterval, bottomGap = 1000, autoLoadNum = -1, nextIndex = 0, stopScroll = false, clickMode = false, openInNewTab = 0;
+    var isPause = false, manualPause = false, isHideBar = false, isLoading = false, curPage = 1, forceState = 0, autoScroll = 0, autoScrollInterval, bottomGap = 1000, autoLoadNum = -1, nextIndex = 0, stopScroll = false, clickMode = false, openInNewTab = 0, charset = "UTF-8", charsetValid = true, urlWillChange = false;
 
     function getBody(doc) {
         return doc.body || doc.querySelector('body') || doc;
@@ -932,6 +935,15 @@
         return getElementByXpath(sel, doc, contextNode);
     }
 
+    function compareNodeName(node, names) {
+        if (!node || !node.nodeName || !node.nodeName.toLowerCase) return false;
+        let nodeName = node.nodeName.toLowerCase();
+        for (let i = 0; i < names.length; i++) {
+            if (names[i] === nodeName) return true;
+        }
+        return false;
+    }
+
     function geneSelector(ele, addID) {
         let selector = ele.nodeName.toLowerCase();
         //Google id class都是隨機。百度更過分，style script順序都是隨機的
@@ -957,7 +969,7 @@
                 }
                 let parent = ele.parentElement;
                 if (parent) {
-                    if (!className && !hasId && parent.children.length > 1 && !/^HTML$/i.test(parent.nodeName)) {
+                    if (!className && !hasId && parent.children.length > 1 && !compareNodeName(parent, ["html"])) {
                         let prevE = ele.previousElementSibling;
                         if (prevE && prevE.className) {
                             let classList = prevE.classList, i = 0;
@@ -995,7 +1007,7 @@
     function createXPathFromElement(elm) {
         let allNodes = document.getElementsByTagName('*'), segs;
         for (segs = []; elm && elm.nodeType == 1; elm = elm.parentNode) {
-            if (/^(BODY|HTML)$/i.test(elm.nodeName)) {
+            if (compareNodeName(elm, ["body", "html"])) {
                 segs.unshift(elm.localName.toLowerCase());
                 continue;
             }
@@ -1339,6 +1351,7 @@
                 let urlReg = new RegExp(this.possibleRule.url, "i");
                 if (urlReg.test(href) && this.ruleMatch(this.possibleRule)) {
                     this.curSiteRule = this.possibleRule;
+                    debug(this.curSiteRule, 'Match rule');
                     return callback();
                 }
             }
@@ -1368,7 +1381,7 @@
                 let urlReg = new RegExp(r.url, "i");
                 if (urlReg.test(href)) {
                     if (!self.ruleMatchPre(r)) return false;
-                    if (r.url.length > 15) {
+                    if (r.url.length > 15 && r.from != 1) {
                         self.possibleRule = r;
                     }
                     if (r.waitElement) {
@@ -1636,6 +1649,48 @@
             return {h: h, w: parseInt(ele.offsetWidth || ele.scrollWidth)};
         }
 
+        checkTargetChildren(ele, curWin, articleNum, curHeight) {
+            let pf = false;
+            if (ele.parentNode) {
+                let paStyle = curWin.getComputedStyle(ele.parentNode);
+                let paDisplay = paStyle.display;
+                let paOverflow = paStyle.overflow;
+                pf = (paDisplay.indexOf('flex') !== -1 && paStyle.flexDirection == "row") || compareNodeName(ele.parentNode, ["ul"]) || paDisplay.indexOf('grid') !== -1 || paOverflow == "hidden";
+            }
+            let curStyle = curWin.getComputedStyle(ele);
+            if (ele.children.length > 1) {
+                if (articleNum > 1) {
+                    return ">article";
+                } else {
+                    let hasText = false;
+                    for (let i in ele.childNodes) {
+                        let child = ele.childNodes[i];
+                        if (child.nodeType == 3 && child.nodeValue.trim() !== '') {
+                            return "";
+                        }
+                    }
+                    if (!hasText) {
+                        let gridArea = curStyle.gridArea;
+                        if (gridArea && gridArea != "auto" && gridArea != "auto / auto / auto / auto") {
+                            return ">*";
+                        } else {
+                            let middleChild = ele.children[parseInt(ele.children.length / 2)];
+                            if ((curStyle.display === 'flex' && curStyle.flexDirection == "row") || (rulesData.opacity != 0 && !pf)) {
+                                return "";
+                            } else if ((middleChild.style && middleChild.style.position === "absolute" && middleChild.style.left && middleChild.style.top) || compareNodeName(ele, ["ul"]) || curHeight == 0) {
+                                return "";
+                            } else {
+                                return ">*";
+                            }
+                        }
+                    }
+                }
+            } else if (pf || curStyle.position === "absolute") {
+                return ">*";
+            }
+            return "";
+        }
+
         getPageElement(doc, curWin, dontFind) {
             if (doc == document && this.docPageElement && document.documentElement.contains(this.docPageElement[0])) {
                 return this.docPageElement;
@@ -1688,16 +1743,16 @@
             if (pageElement && pageElement.length === 1 && pageElement[0].style.display === 'none') {
                 pageElement = [body];
             }
-            if (this.curSiteRule.singleUrl && pageElement && pageElement.length > 0 && /^TR$/i.test(pageElement[0].nodeName)) {
+            if (this.curSiteRule.singleUrl && pageElement && pageElement.length > 0 && compareNodeName(pageElement[0], ["tr"])) {
                 let mainTr = this.insert.parentNode.querySelectorAll('tr'), mainTdNum = 0, newTdNum = 0;
                 mainTr = mainTr[mainTr.length - 1];
                 [].forEach.call(mainTr.children, el => {
-                    if (/^(TD|TH)$/i.test(el.nodeName)) {
+                    if (compareNodeName(el, ["td", "th"])) {
                         mainTdNum += el.colSpan || 1;
                     }
                 });
                 [].forEach.call(pageElement[0].children, el => {
-                    if (/^(TD|TH)$/i.test(el.nodeName)) {
+                    if (compareNodeName(el, ["td", "th"])) {
                         newTdNum += el.colSpan || 1;
                     }
                 });
@@ -1717,7 +1772,7 @@
                     nextLeftPos = this.initNext.getBoundingClientRect().left;
                 }
                 function checkElement(ele) {
-                    if (/^(PRE|CODE)$/i.test(ele.nodeName)) {
+                    if (compareNodeName(ele, ["pre", "code"])) {
                         self.curSiteRule.pageElement = geneSelector(ele.parentNode);
                         debug(self.curSiteRule.pageElement, 'Page element');
                         return [ele.parentNode];
@@ -1738,7 +1793,7 @@
                             curWidth = validSize.w;
                         }
                     }
-                    if (/^PICTURE$/i.test(ele.nodeName) || !ele.innerText || ele.innerText.trim() == '') {
+                    if (compareNodeName(ele, ["picture"]) || !ele.innerText || ele.innerText.trim() == '') {
                         self.curSiteRule.pageElement = geneSelector(ele.parentNode) + ">" + ele.nodeName.toLowerCase();
                         debug(self.curSiteRule.pageElement, 'Page element');
                         let eles = [];
@@ -1750,25 +1805,13 @@
                         }
                         return eles;
                     }
-                    if (curHeight / bodyHeight <= 0.22) {
-                        let article = doc.querySelectorAll(mainSel);
-                        if (article && article.length == 1) {
-                            article = article[0];
-                            self.curSiteRule.pageElement = article.nodeName.toLowerCase() + (article.id ? "#" + article.id : "") + (article.className ? "." + article.className.replace(/ /g, ".") : "") + ">*";
-                            debug(self.curSiteRule.pageElement, 'Page element');
-                            return article.children;
-                        }
-                        self.curSiteRule.pageElement = allOfBody;
-                        debug(self.curSiteRule.pageElement, 'Page element');
-                        return [body];
-                    }
-                    if (/^FORM$/i.test(ele.nodeName) && ele.parentNode != getBody(document)) {
+                    if (compareNodeName(ele, ["form"]) && ele.parentNode != getBody(document)) {
                         self.curSiteRule.pageElement = geneSelector(ele) + ">*";
                         debug(self.curSiteRule.pageElement, 'Page element');
                         return ele.children;
                     }
                     if (ele.children.length == 0 && !self.curSiteRule.pageElement) {
-                        if (/^P$/i.test(ele.parentNode.nodeName)) ele = ele.parentNode;
+                        if (compareNodeName(ele.parentNode, ["p"])) ele = ele.parentNode;
                         self.curSiteRule.pageElement = geneSelector(ele.parentNode) + ">" + ele.nodeName.toLowerCase();
                         debug(self.curSiteRule.pageElement, 'Page element');
                         return getAllElements(self.curSiteRule.pageElement, doc);
@@ -1778,16 +1821,20 @@
                     let articleNum = 0;
                     for (i = 0; i < ele.children.length; i++) {
                         let curNode = ele.children[i];
-                        if (/^(CANVAS|NAV)$/i.test(curNode.nodeName)) continue;
+                        if (/^H\d$/i.test(curNode.nodeName) && curNode.offsetParent) {
+                            curMaxEle = null;
+                            break;
+                        }
+                        if (compareNodeName(curNode, ["canvas", "nav"])) continue;
                         let curStyle = curWin.getComputedStyle(curNode);
                         if (!curNode.offsetParent && (curStyle.position != "fixed" || curStyle.opacity == 0)) {
                             continue;
                         }
-                        if (!/^IMG$/i.test(curNode.nodeName) && curNode.querySelector('img') == null && /^\s*$/.test(curNode.innerText)) continue;
+                        if (!compareNodeName(curNode, ["img"]) && curNode.querySelector('img') == null && /^\s*$/.test(curNode.innerText)) continue;
                         if (needCheckNext && !curNode.contains(self.initNext) && getElementTop(curNode) > windowHeight) {
                             continue;
                         }
-                        if (/^ARTICLE$/i.test(curNode.nodeName)) articleNum++;
+                        if (compareNodeName(curNode, ["article"])) articleNum++;
                         let validSize = self.getValidSize(curNode, curWin);
                         let h = validSize.h;
                         let w = validSize.w;
@@ -1835,7 +1882,7 @@
                                 }
                             }
                             if (h < minHeight) {
-                                if (!needCheckNext || h < (windowHeight>>2) || !ele.contains(self.initNext)) {
+                                if (!needCheckNext || h < (windowHeight>>1) || !ele.contains(self.initNext)) {
                                     continue;
                                 }
                             }
@@ -1845,6 +1892,17 @@
                             curMaxEle = curNode;
                             preOffsetTop = curNode.offsetTop;
                         }
+                    }
+                    if (curMaxEle && curHeight / bodyHeight <= 0.2) {
+                        let article = doc.querySelectorAll(mainSel);
+                        if (article && article.length == 1) {
+                            article = article[0];
+                            let childrenEnd = self.checkTargetChildren(article, curWin, articleNum, curHeight);
+                            self.curSiteRule.pageElement = article.nodeName.toLowerCase() + (article.id ? "#" + article.id : "") + (article.className ? "." + article.className.replace(/ /g, ".") : "") + childrenEnd;
+                            debug(self.curSiteRule.pageElement, 'Page element');
+                            return childrenEnd ? article.children : [article];
+                        }
+                        curMaxEle = null;
                     }
                     if (curMaxEle) {
                         let sameClassNum = 0, hasDifferent = false;
@@ -1868,8 +1926,8 @@
                         return null;
                     }
                     if (ele.parentNode.children.length == 1 && curWin.getComputedStyle(ele.parentNode).float == 'none') ele = ele.parentNode;
-                    else if (/^(P|BR|TD)$/i.test(ele.nodeName)) ele = ele.parentNode;
-                    else if (/^TBODY$/i.test(ele.nodeName)) {
+                    else if (compareNodeName(ele, ["p", "br", "td"])) ele = ele.parentNode;
+                    else if (compareNodeName(ele, ["tbody"])) {
                         self.curSiteRule.pageElement = geneSelector(ele) + ">*";
                         if (ele.children.length > 0 && ele.children[0].querySelector("th")) {
                             self.curSiteRule.pageElement += ":not(:first-child)";
@@ -1885,48 +1943,9 @@
                         }
                     }
                     self.curSiteRule.pageElement = geneSelector(ele);
-                    let pf = false;
-                    if (ele.parentNode) {
-                        let paStyle = curWin.getComputedStyle(ele.parentNode);
-                        let paDisplay = paStyle.display;
-                        let paOverflow = paStyle.overflow;
-                        pf = paDisplay.indexOf('flex') !== -1 || paDisplay.indexOf('grid') !== -1 || paOverflow == "hidden";
-                    }
-                    let curStyle = curWin.getComputedStyle(ele);
-                    if (ele.children.length > 1) {
-                        if (articleNum > 1) {
-                            self.curSiteRule.pageElement += ">article";
-                            ele = ele.children;
-                        } else {
-                            let hasText = false;
-                            for (let i in ele.childNodes) {
-                                let child = ele.childNodes[i];
-                                if (child.nodeType == 3 && child.nodeValue.trim() !== '') {
-                                    hasText = true;
-                                    ele = [ele];
-                                    break;
-                                }
-                            }
-                            if (!hasText) {
-                                let gridArea = curStyle.gridArea;
-                                if (gridArea && gridArea != "auto / auto / auto / auto") {
-                                    self.curSiteRule.pageElement += ">*";
-                                    ele = ele.children;
-                                } else {
-                                    let middleChild = ele.children[parseInt(ele.children.length / 2)];
-                                    if (curStyle.display === 'flex' || (rulesData.opacity != 0 && !pf)) {
-                                        ele = [ele];
-                                    } else if ((middleChild.style && middleChild.style.position === "absolute" && middleChild.style.left && middleChild.style.top) || /^UL$/i.test(ele.nodeName) || curHeight == 0) {
-                                        ele = [ele];
-                                    } else {
-                                        self.curSiteRule.pageElement += ">*";
-                                        ele = ele.children;
-                                    }
-                                }
-                            }
-                        }
-                    } else if (pf || curStyle.position === "absolute") {
-                        self.curSiteRule.pageElement += ">*";
+                    let childrenEnd = self.checkTargetChildren(ele, curWin, articleNum, curHeight);
+                    if (childrenEnd) {
+                        self.curSiteRule.pageElement += childrenEnd;
                         ele = ele.children;
                     } else {
                         ele = [ele];
@@ -1941,8 +1960,9 @@
                         debug("Stop as too long between next & page element");
                         isPause = true;
                         pageElement = [];
+                        sideController.remove();
                     } else {
-                        if (pageElement.length == 1 && /^IMG$/i.test(pageElement[0].nodeName)) {
+                        if (pageElement.length == 1 && compareNodeName(pageElement[0], ["img"])) {
                             self.curSiteRule.pageBar = 0;
                         }
                     }
@@ -1952,7 +1972,7 @@
 
             if (doc !== document) {
                 this.setPageElementCss(pageElement);
-                this.lazyImgAction(pageElement);
+                this.lazyImgAction(pageElement, doc);
                 this.filterEles(doc, pageElement);
             } else if (!this.docPageElement) {
                 this.setPageElementCss(pageElement, true);
@@ -2099,7 +2119,7 @@
                 let contentVisibility = this.curSiteRule.contentVisibility || rulesData.contentVisibility;
                 if (!contentVisibility && !pageElementCss) return;
                 [].forEach.call(pageElement, (ele, i) => {
-                    if (!/LINK|META|STYLE|SCRIPT/i.test(ele.nodeName)) {
+                    if (!compareNodeName(ele, ["link", "meta", "style", "script"])) {
                         if (pageElementCss) {
                             if (pageElementCss !== '0' && !ele.dataset.pagetualPageElement) {
                                 ele.style.cssText = (ele.style.cssText || '') + pageElementCss;
@@ -2200,6 +2220,7 @@
                 "[class^=pag] a[rel=next]",
                 "[class^=Pag] [aria-label=next]",
                 "[aria-label='Next page']",
+                "[aria-label='next page']",
                 ".pagination-nav__item--next>a",
                 "a.pageright",
                 ".page-numbers.current+a",
@@ -2328,30 +2349,35 @@
                     }
                     let aTag = aTags[i];
                     if (aTag.style.display == "none") continue;
-                    let innerText = (aTag.innerText || aTag.value || aTag.title || '');
+                    let innerText = (aTag.title || aTag.innerText || aTag.value || '');
                     if (innerText) {
                         if (innerText == "§") continue;
                         innerText = innerText.trim();
                         if (innerText.length > 80) continue;
                     }
-                    let availableHref = aTag.href && aTag.href.length < 250 && /^http/.test(aTag.href);
-                    if (availableHref && /next\-?(page)?$/i.test(aTag.href)) continue;
                     if (aTag.className) {
-                        if (/slick|slide|gallery/i.test(aTag.className)) continue;
                         if (aTag.classList && aTag.classList.contains('disabled')) continue;
+                        if (/slick|slide|gallery/i.test(aTag.className)) continue;
                     }
                     if (aTag.dataset && aTag.dataset.preview) continue;
                     let ariaLabel = aTag.getAttribute("aria-label");
                     if (ariaLabel && /slick|slide|gallery/i.test(ariaLabel)) continue;
 
-                    if (aTag.parentNode.className && /slick|slide|gallery/i.test(aTag.parentNode.className)) continue;
+                    let availableHref = aTag.href && aTag.href.length < 250 && /^http/.test(aTag.href);
+                    if (availableHref && /next\-?(page)?$/i.test(aTag.href)) continue;
+
+                    if (aTag.parentNode.className) {
+                        if (/slick|slide|gallery/i.test(aTag.parentNode.className)) {
+                            continue;
+                        }
+                        if (aTag.parentNode.classList.contains('disabled')) continue;
+                        if (aTag.parentNode.classList.contains('active')) continue;
+                    }
                     if (aTag.parentNode.parentNode) {
                         if (/slick|slide|gallery/i.test(aTag.parentNode.parentNode.className)) continue;
                         if (aTag.parentNode.parentNode.parentNode && /slick|slide|gallery/i.test(aTag.parentNode.parentNode.parentNode.className)) continue;
                     }
-                    if (aTag.parentNode.classList && aTag.parentNode.classList.contains('disabled')) continue;
-                    if (aTag.parentNode.classList && aTag.parentNode.classList.contains('active')) continue;
-                    if (/^BLOCKQUOTE$/i.test(aTag.parentNode.nodeName)) continue;
+                    if (compareNodeName(aTag.parentNode, ["blockquote"])) continue;
 
                     if (aTag.previousElementSibling && /\b(play|volume)\b/.test(aTag.previousElementSibling.className)) continue;
                     if (aTag.nextElementSibling && /\b(play|volume)\b/.test(aTag.nextElementSibling.className)) continue;
@@ -2395,12 +2421,13 @@
                     if (isJs) continue;
                     if (!next4) {
                         let prevEle = aTag.previousElementSibling;
-                        if (prevEle && (/^(B|SPAN|STRONG)$/i.test(prevEle.nodeName))) {
+                        if (prevEle && compareNodeName(prevEle, ["b", "span", "strong"])) {
                             if (/^\d+$/.test(aTag.innerText.trim()) && /^\d+$/.test(prevEle.innerText.trim()) && parseInt(aTag.innerText) == parseInt(prevEle.innerText) + 1) {
                                 next4 = aTag;
                             }
                         }
                     }
+                    if (urlWillChange) continue;
                     if (!next4 && availableHref) {
                         if (aTag.href.indexOf(location.hostname) === -1) continue;
                         let _aHref = aTag.href.replace("?&", "?").replace("index.php?", "?").toLowerCase();
@@ -2441,8 +2468,6 @@
                                 if (parent && parent.contains(otherPageEle) && !/^\d+$/.test(otherPageEle.innerText.trim())) {
                                     next4 = null;
                                 }
-                            } else {
-                                next4 = null;
                             }
                         }
                     }
@@ -2463,7 +2488,7 @@
             if (!next) next = next1 || next4 || next3 || next2;
             if (!next) {
                 next = jsNext || nextJs1 || nextJs3 || nextJs2;
-                if (next && next.parentNode.className.indexOf('tab') != -1) next = null;
+                if (next && next.parentNode.className && next.parentNode.className.indexOf && next.parentNode.className.indexOf('tab') != -1) next = null;
             }
             if (next && next.classList && (next.classList.contains("results-more") || next.classList.contains("no"))) next = null;
             if (next && next.hasAttribute && next.hasAttribute("disabled")) next = null;
@@ -2472,8 +2497,11 @@
 
         verifyNext(next, doc) {
             if (!next) return null;
-            if (next.previousElementSibling && /^BR$/i.test(next.previousElementSibling.nodeName)) return null;
-            let eles = getAllElements(`//${next.nodeName}[text()='${next.innerText}']`, doc);
+            if (next.previousElementSibling && compareNodeName(next.previousElementSibling, ["br"])) return null;
+            let eles = [];
+            if (next.innerText && next.innerText.indexOf("\n") == -1) {
+                eles = getAllElements(`//${next.nodeName}[text()='${next.innerText}']`, doc);
+            }
             if (eles.length >= 2 && eles[0].href != eles[1].href) {
                 next = null;
             } else if (doc == document) {
@@ -2671,10 +2699,10 @@
                         if (/^\d+$/.test(nextLink.innerText)) {
                             nextLink.href = getNextLinkByForm(form, nextLink, nextLink.innerText);
                         }
-                    } else if (/^INPUT$/i.test(nextLink.nodeName) || nextLink.type == "submit") {
+                    } else if (compareNodeName(nextLink, ["input"]) || nextLink.type == "submit") {
                         form = nextLink.parentNode;
                         while (form) {
-                            if (/^FORM$/i.test(form.nodeName)) break;
+                            if (compareNodeName(form, ["form"])) break;
                             else form = form.parentNode;
                         }
                         if (form) {
@@ -2689,11 +2717,11 @@
                 page = await this.getPage(doc, exist);
                 nextLink = page.next;
                 if (nextLink) {
-                    if (/^INPUT$/i.test(nextLink.nodeName) || nextLink.type == "submit") {
+                    if (compareNodeName(nextLink, ["input"]) || nextLink.type == "submit") {
                         if (!/next/i.test(nextLink.getAttribute("onclick"))) {
                             let form = nextLink.parentNode;
                             while (form) {
-                                if (/^FORM$/i.test(form.nodeName)) break;
+                                if (compareNodeName(form, ["form"])) break;
                                 else form = form.parentNode;
                             }
                             if (form) {
@@ -2702,7 +2730,7 @@
                         }
                     }
                     let parent = nextLink;
-                    while (parent && !/^BODY$/i.test(parent.nodeName)) {
+                    while (parent && !compareNodeName(parent, ["body"])) {
                         if (parent.hasAttribute && parent.hasAttribute("disabled")) {
                             this.nextLinkHref = false;
                             return null;
@@ -2720,17 +2748,46 @@
                         parent = parent.parentNode;
                     }
                     if (doc == document) {
-                        if (this.linkHasNoHref(nextLink) && (clickedSth || !isVisible(nextLink, _unsafeWindow))) {
-                            this.nextLinkHref = false;
-                            return null;
-                        } else {
-                            let nextLinkCs = _unsafeWindow.getComputedStyle(nextLink);
-                            if (nextLinkCs.cursor == "not-allowed") {
+                        if (this.linkHasNoHref(nextLink)) {
+                            if (clickedSth || !isVisible(nextLink, _unsafeWindow)) {
                                 this.nextLinkHref = false;
                                 return null;
                             }
-                            this.initNext = nextLink;
+                            let video = document.querySelector("video,iframe[id*=play],[id*=play]>iframe,iframe[src*=player],iframe[src*=m3u8]");
+                            if (video) {
+                                if (video.offsetParent && video.name != 'pagetual-iframe') {
+                                    let scrollWidth = video.scrollWidth || video.offsetWidth;
+                                    let scrollHeight = video.scrollHeight || video.offsetHeight;
+                                    if (compareNodeName(video, ["iframe"])) {
+                                    } else if (scrollWidth > 100 && scrollHeight > 100) {
+                                        let winWidth = window.innerWidth || document.documentElement.clientWidth;
+                                        let winHeight = window.innerHeight || document.documentElement.clientHeight;
+                                        if (scrollWidth > winWidth>>1 && scrollHeight > winHeight>>1) {
+                                            debug("Disable when large media found");
+                                        } else {
+                                            video = null;
+                                        }
+                                    } else {
+                                        video = null;
+                                    }
+                                } else {
+                                    video = null;
+                                }
+                            }
+                            if (video) {
+                                isPause = true;
+                                this.clearAddedElements();
+                                this.nextLinkHref = false;
+                                return null;
+                            }
                         }
+
+                        let nextLinkCs = _unsafeWindow.getComputedStyle(nextLink);
+                        if (nextLinkCs.cursor == "not-allowed") {
+                            this.nextLinkHref = false;
+                            return null;
+                        }
+                        this.initNext = nextLink;
                     }
                     let form = doc.querySelector('#search-form');
                     if (!nextLink.href && nextLink.hasAttribute("onclick") && form) {
@@ -2742,7 +2799,7 @@
             }
             if (nextLink) {
                 if (!this.checkStopSign(nextLink, doc)) {
-                    if (curPage > 1 && rulesData.lastPageTips) showTips(i18n("lastPage"));
+                    if (curPage > 1 && rulesData.lastPageTips) showTips(i18n("lastPage"), "", 800);
                     return null;
                 }
                 if (this.curSiteRule.action == 3) {
@@ -2825,7 +2882,7 @@
                     }
                     if (filter.link) {
                         let linkRegExp = new RegExp(filter.link, "i");
-                        if (/^A$/i.test(ele.nodeName) && linkRegExp.test(ele.href)) return false;
+                        if (compareNodeName(ele, ["a"]) && linkRegExp.test(ele.href)) return false;
                         let aChildren = ele.querySelectorAll("a");
                         for (let i = 0; i < aChildren.length; i++) {
                             let child = aChildren[i];
@@ -2937,11 +2994,11 @@
                 url: url,
                 method: postParams ? 'POST' : 'GET',
                 data: postParams,
-                overrideMimeType: 'text/html;charset=' + (document.characterSet || document.charset || document.inputEncoding),
+                overrideMimeType: 'text/html;charset=' + charset,
                 headers: {
                     'Referer': location.href,
                     'User-Agent': navigator.userAgent,
-                    "Content-Type": (postParams ? "application/x-www-form-urlencoded" : "text/html") + ";charset=" + (document.characterSet || document.charset || document.inputEncoding),
+                    "Content-Type": (postParams ? "application/x-www-form-urlencoded" : "text/html") + ";charset=" + charset,
                 },
                 timeout: 10000,
                 onload: function(res) {
@@ -2951,7 +3008,7 @@
                         doc.documentElement.innerHTML = createHTML(res.response);
                         var body = getBody(doc);
                         if (body && body.firstChild) {
-                            self.lazyImgAction(body.children);
+                            self.lazyImgAction(body.children, doc);
                         }
                         if (!self.preloadDiv) {
                             self.preloadDiv = document.createElement('div');
@@ -3063,7 +3120,7 @@
         openInNewTab(eles) {
             if (openInNewTab) {
                 [].forEach.call(eles, ele => {
-                    if (/^A$/i.test(ele.nodeName) && ele.href && !/^(mailto:|javascript:)|#/.test(ele.href)) {
+                    if (compareNodeName(ele, ["a"]) && ele.href && !/^(mailto:|javascript:)|#/.test(ele.href)) {
                         ele.setAttribute('target', openInNewTab == 1 ? '_blank' : '_self');
                     } else {
                         [].forEach.call(ele.querySelectorAll('a[href]:not([href^="mailto:"]):not([href^="javascript:"]):not([href^="#"])'), a => {
@@ -3079,25 +3136,25 @@
             }
         }
 
-        lazyImgAction(eles) {
+        lazyImgAction(eles, doc) {
             if (!eles || eles.length == 0) return;
             let lazyImgSrc = this.curSiteRule.lazyImgSrc;
             if (lazyImgSrc === 0 || lazyImgSrc === '0') return;
+            let imgLazyAttrs = [];
+            let lazyAttrs = ["div[data-thumb]|data-src", "div.img|data-src", "div.lazy|data-src", "div.lazy|data-original", "a.lazy|data-bg", "a.lazyload|data-original"];
+            let removeProps = [];
             let setLazyImg = img => {
                 let realSrc;
-                if (lazyImgSrc) {
-                    if (!Array.isArray(lazyImgSrc)) {
-                        lazyImgSrc = [lazyImgSrc];
-                    }
+                imgLazyAttrs.forEach(attr => {
                     realSrc = img.getAttribute(lazyImgSrc[0]);
-                    if (lazyImgSrc.length == 2) {
-                        let removeProps = lazyImgSrc[1].split(",");
+                    if (realSrc) {
                         removeProps.forEach(prop => {
                             img.removeAttribute(prop.trim());
                         });
+                        img.src = realSrc;
+                        return;
                     }
-                    if (realSrc) img.src = realSrc;
-                }
+                })
                 if (!realSrc) {
                     let lazyAttr = "";
                     if (img.getAttribute("_src") && !img.src) {
@@ -3132,6 +3189,9 @@
                         img.src = realSrc;
                         img.removeAttribute("srcset");
                         img.removeAttribute(lazyAttr);
+                        if (img.classList && img.classList.contains && img.classList.contains("lazy")) {
+                            img.classList.remove("lazy");
+                        }
                         if (img.style.display == "none") {
                             img.style.display = "";
                         }
@@ -3144,28 +3204,36 @@
                     }
                 }
             };
-            [].forEach.call(eles, ele => {
-                if (/^IMG$/i.test(ele.nodeName)) {
-                    setLazyImg(ele);
+            if (lazyImgSrc) {
+                if (!Array.isArray(lazyImgSrc)) {
+                    lazyAttrs = lazyImgSrc.split(",");
                 } else {
-                    [].forEach.call(ele.querySelectorAll("img,picture>source"), img => {
-                        setLazyImg(img);
-                    });
-                    [].forEach.call(ele.querySelectorAll("div[data-src][data-thumb],div.img[data-src],div.lazy[data-src]"), div => {
-                        div.style.setProperty("background-image", "url(" + div.dataset.src + ")", "important");
-                    });
+                    lazyAttrs = lazyImgSrc[0].split(",");
+                    removeProps = lazyImgSrc[1].split(",");
                 }
-                if (/^A$/i.test(ele.nodeName) && ele.classList.contains("lazyload")) {
-                    if (ele.dataset.original) {
-                        ele.style.backgroundImage = 'url("' + ele.dataset.original + '")';
+            }
+            lazyAttrs.forEach(attr => {
+                let attrArr = attr.split("|");
+                if (attrArr.length !== 2) {
+                    imgLazyAttrs.push(attr.trim());
+                } else {
+                    let selector = attrArr[0].trim();
+                    let lazyAttr = attrArr[1].trim();
+                    if (selector == "img") {
+                        imgLazyAttrs.push(lazyAttr);
+                    } else {
+                        selector += "[" + lazyAttr + "]";
+                        [].forEach.call(doc.querySelectorAll(selector), ele => {
+                            ele.style.setProperty("background-image", "url(" + ele.getAttribute(lazyAttr) + ")", "important");
+                            removeProps.forEach(prop => {
+                                ele.removeAttribute(prop.trim());
+                            });
+                        });
                     }
-                } else {
-                    [].forEach.call(ele.querySelectorAll("a.lazyload"), a => {
-                        if (a.dataset.original) {
-                            a.style.backgroundImage = 'url("' + a.dataset.original + '")';
-                        }
-                    });
                 }
+            });
+            [].forEach.call(doc.querySelectorAll("img,picture>source"), img => {
+                setLazyImg(img);
             });
         }
 
@@ -3188,10 +3256,13 @@
             this.oldUrl = "";
             this.initUrl = location.href;
             this.historyUrl = "";
+            this.possibleCheck = 0;
             let base = document.querySelector("base");
             this.basePath = base ? base.href : location.href;
             this.getRule(async () => {
-                isPause = manualPause;
+                if (self.curSiteRule.sideController === true || (self.curSiteRule.sideController !== false && rulesData.sideController)) {
+                    isPause = manualPause;
+                }
                 if (self.curSiteRule.enable == 0) {
                     debug("Stop as rule disable");
                     isPause = true;
@@ -3262,9 +3333,20 @@
                     }
                 }
                 if (self.curSiteRule.singleUrl && self.nextLinkHref == false && self.possibleRule) {
-                    setTimeout(() => {
-                        self.initPage(() => {});
-                    }, 1000);
+                    let urlReg = new RegExp(self.possibleRule.url, "i");
+                    function checkPossible () {
+                        if (self.possibleCheck++ < 3) {
+                            setTimeout(() => {
+                                if (self.curSiteRule.singleUrl) {
+                                    var href = location.href.slice(0, 500);
+                                    if (urlReg.test(href) && self.ruleMatch(self.possibleRule)) {
+                                        self.initPage(() => {});
+                                    } else checkPossible();
+                                }
+                            }, 3000);
+                        }
+                    }
+                    checkPossible();
                 }
                 self.refreshByClick();
 
@@ -3287,16 +3369,20 @@
 
         beginLoading() {
             isLoading = true;
+            if (targetY >= 0) {
+                window.scrollTo({ top: targetY, behavior: 'instant'});
+                targetY = -1;
+            }
             let lastScrollTop = getBody(document).scrollTop || document.documentElement.scrollTop;
             ruleParser.insertElement(loadingDiv);
             if (forceState == 2) {
                 getBody(document).appendChild(loadingDiv);
             } else {
                 let parent = loadingDiv.parentNode;
-                if (/^TBODY$/i.test(parent.nodeName)) {
+                if (compareNodeName(parent, ["tbody"])) {
                     parent = parent.parentNode;
                 }
-                if (/^TABLE$/i.test(parent.nodeName)) {
+                if (compareNodeName(parent, ["table"])) {
                     parent.parentNode.appendChild(loadingDiv);
                 }
             }
@@ -3354,6 +3440,11 @@
                 isLoading = false;
                 return false;
             }
+
+            if (targetY >= 0) {
+                window.scrollTo({ top: targetY, behavior: 'instant'});
+                targetY = -1;
+            }
             let lastScrollTop = getBody(document).scrollTop || document.documentElement.scrollTop;
             this.getInsert();
             var self = this, newEles = [];
@@ -3382,7 +3473,7 @@
                         let newCanvas = newCanvass[i];
                         newCanvas.getContext('2d').drawImage(oldCanvas, 0, 0);
                     }
-                    if (!/^(STYLE|SCRIPT)$/.test(newEle.nodeName)) self.visibilityItems.push(newEle);
+                    if (!compareNodeName(newEle, ["style", "script"])) self.visibilityItems.push(newEle);
                     collection.appendChild(newEle)
                     newEles.push(newEle);
                 });
@@ -3541,7 +3632,7 @@
                 <div id="pagetual-sideController-top" class="pagetual-sideController-btn">⊼</div>
                 <div>
                   <div id="pagetual-sideController-pre" class="pagetual-sideController-btn">∧</div>
-                  <div id="pagetual-sideController-move"><svg width="30" height="30" style="border-radius: 15px;display: initial;position: relative;cursor: pointer;margin: 0;width: 30px;height: 30px;vertical-align: middle;fill: currentColor;overflow: hidden;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" fill="#604b4a"></path></svg><div id="pagetual-sideController-pagenum"></div></div>
+                  <div id="pagetual-sideController-move"><svg width="30" height="30" style="border-radius: 15px;display: initial;position: relative;cursor: pointer;margin: 0;width: 30px;height: 30px;vertical-align: middle;fill: currentColor;overflow: hidden;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" style="fill: #604b4a;" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" style="fill: #604b4a;" fill="#604b4a"></path></svg><div id="pagetual-sideController-pagenum"></div></div>
                   <div id="pagetual-sideController-next" class="pagetual-sideController-btn">∨</div>
                 </div>
                 <div id="pagetual-sideController-bottom" class="pagetual-sideController-btn">⊻</div>
@@ -3578,7 +3669,8 @@
                     scrollToPageBar(prePageBar);
                 } else {
                     let scrollTop = getBody(document).scrollTop || document.documentElement.scrollTop;
-                    window.scrollTo({ top: scrollTop - (window.innerHeight || document.documentElement.clientHeight), behavior: 'smooth'});
+                    targetY = scrollTop - (window.innerHeight || document.documentElement.clientHeight);
+                    window.scrollTo({ top: targetY, behavior: 'smooth'});
                 }
             }, true);
 
@@ -3590,10 +3682,12 @@
                 } else {
                     if (pageBarObj.preBar) {
                         let scrollH = Math.max(document.documentElement.scrollHeight, getBody(document).scrollHeight);
-                        window.scrollTo({ top: (scrollH || 9999999), behavior: 'smooth'});
+                        targetY = scrollH || 9999999;
+                        window.scrollTo({ top: targetY, behavior: 'smooth'});
                     } else {
                         let scrollTop = getBody(document).scrollTop || document.documentElement.scrollTop;
-                        window.scrollTo({ top: scrollTop + (window.innerHeight || document.documentElement.clientHeight), behavior: 'smooth'});
+                        targetY = scrollTop + (window.innerHeight || document.documentElement.clientHeight);
+                        window.scrollTo({ top: targetY, behavior: 'smooth'});
                     }
                 }
             }, true);
@@ -3887,6 +3981,7 @@
               color: #161616;
               z-index: 2147483646;
               font-size: 16px;
+              overflow: hidden;
               box-shadow: rgb(0 0 0) 0px 0px 10px;
              }
              #pagetual-picker * {
@@ -3955,6 +4050,7 @@
               margin-right: 5px;
               resize: both;
               box-shadow: 0 1px 5px 1px #ddd;
+              overflow-wrap: anywhere;
              }
              #pagetual-picker textarea:focus {
               color: black;
@@ -3973,6 +4069,13 @@
               appearance: auto;
               display: inline-block;
               position: initial;
+             }
+             #pagetual-picker [type=checkbox]:after,
+             #pagetual-picker [type=radio]:after,
+             #pagetual-picker [type=checkbox]:before,
+             #pagetual-picker [type=radio]:before {
+              border: none;
+              background: none;
              }
              #pagetual-picker label {
               font-size: 18px;
@@ -4022,6 +4125,10 @@
               cursor: pointer;
              }
              #pagetual-picker .allpath>span.path:hover {
+              opacity: 0.6;
+             }
+             #pagetual-picker .allpath>span.path:hover,
+             #pagetual-picker .allpath>span.path.checked {
               color: orangered;
              }
              #pagetual-picker .moreConfig {
@@ -4103,17 +4210,17 @@
             frame.id = "pagetual-picker";
             frame.innerHTML = createHTML(`
                 <button title="Pagetual" type="button" class="logoIcon">
-                  <svg width="30" height="30" class="upSvg pagetual" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" fill="#604b4a"></path></svg>
+                  <svg width="30" height="30" class="upSvg pagetual" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" style="fill: #604b4a;" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" style="fill: #604b4a;" fill="#604b4a"></path></svg>
                 </button>
                 <div class="title" title="${i18n("configure")}">${i18n("picker")}</div>
                 <button title="${i18n("closePicker")}" type="button" class="closePicker">
-                  <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M512 128c212 0 384 172 384 384s-172 384-384 384-384-172-384-384 172-384 384-384m0-64C264.8 64 64 264.8 64 512s200.8 448 448 448 448-200.8 448-448S759.2 64 512 64z m238.4 254.4l-45.6-45.6L512 467.2 318.4 273.6l-45.6 45.6L467.2 512 273.6 705.6l45.6 45.6L512 557.6l193.6 193.6 45.6-45.6L557.6 512l192.8-193.6z" fill="#604b4a"></path></svg>
+                  <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M512 128c212 0 384 172 384 384s-172 384-384 384-384-172-384-384 172-384 384-384m0-64C264.8 64 64 264.8 64 512s200.8 448 448 448 448-200.8 448-448S759.2 64 512 64z m238.4 254.4l-45.6-45.6L512 467.2 318.4 273.6l-45.6 45.6L467.2 512 273.6 705.6l45.6 45.6L512 557.6l193.6 193.6 45.6-45.6L557.6 512l192.8-193.6z" style="fill: #604b4a;" fill="#604b4a"></path></svg>
                 </button>
                 <div class="allpath" title="${i18n("switchSelector")}"></div>
                 <div>
                   <textarea class="selector" spellcheck="false" name="selector" placeholder="${i18n("pickerPlaceholder")}"></textarea>
                   <button id="check" title="${i18n("pickerCheck")}" type="button">
-                    <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M512 128a384 384 0 1 0 0 768 384 384 0 0 0 0-768z m0-85.333333c259.2 0 469.333333 210.133333 469.333333 469.333333s-210.133333 469.333333-469.333333 469.333333S42.666667 771.2 42.666667 512 252.8 42.666667 512 42.666667zM696.149333 298.666667L768 349.866667 471.594667 725.333333 256 571.733333l53.888-68.266666 143.744 102.4z" fill="#604b4a"></path></svg>
+                    <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M512 128a384 384 0 1 0 0 768 384 384 0 0 0 0-768z m0-85.333333c259.2 0 469.333333 210.133333 469.333333 469.333333s-210.133333 469.333333-469.333333 469.333333S42.666667 771.2 42.666667 512 252.8 42.666667 512 42.666667zM696.149333 298.666667L768 349.866667 471.594667 725.333333 256 571.733333l53.888-68.266666 143.744 102.4z" style="fill: #604b4a;" fill="#604b4a"></path></svg>
                   </button>
                 </div>
                 <div class="bottom">
@@ -4146,7 +4253,7 @@
                 <div>
                   <textarea class="tempRule" spellcheck="false" placeholder="{Rule object}" title="Rule for current site"></textarea>
                   <button id="showDetail" title="" type="button">
-                    <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M511.1 63.7c-247.4 0-448 200.6-448 448s200.6 448 448 448 448-200.6 448-448-200.6-448-448-448z m281.2 374.5L535.6 694.9c-12.5 12.5-32.8 12.5-45.3 0l-255.8-256c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l210.7 210.7c12.5 12.5 32.8 12.5 45.3 0l211.4-211.4c12.5-12.5 32.8-12.5 45.3 0 12.3 12.5 12.3 32.8-0.2 45.3z" fill="orangered"></path></svg>
+                    <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M511.1 63.7c-247.4 0-448 200.6-448 448s200.6 448 448 448 448-200.6 448-448-200.6-448-448-448z m281.2 374.5L535.6 694.9c-12.5 12.5-32.8 12.5-45.3 0l-255.8-256c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l210.7 210.7c12.5 12.5 32.8 12.5 45.3 0l211.4-211.4c12.5-12.5 32.8-12.5 45.3 0 12.3 12.5 12.3 32.8-0.2 45.3z" style="fill: orangered;" fill="orangered"></path></svg>
                   </button>
                   <div class="addProp">
                     <button id="addOtherProp" title="${i18n("addOtherProp")}" type="button">+</button>
@@ -4154,7 +4261,7 @@
                     <button id="addPageSelector" title="${i18n("addPageSelector")}" type="button">❏</button>
                   </div>
                   <button id="saveDetail" title="${i18n("save")}" type="button">
-                    <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M704 128H192c-35.2 0-64 28.8-64 64v640c0 35.2 28.8 64 64 64h640c35.2 0 64-28.8 64-64V320L704 128zM256 256h320v128H256V256z m256 512c-70.4 0-128-57.6-128-128s57.6-128 128-128 128 57.6 128 128-57.6 128-128 128z" fill="orangered"></path></svg>
+                    <svg viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M704 128H192c-35.2 0-64 28.8-64 64v640c0 35.2 28.8 64 64 64h640c35.2 0 64-28.8 64-64V320L704 128zM256 256h320v128H256V256z m256 512c-70.4 0-128-57.6-128-128s57.6-128 128-128 128 57.6 128 128-57.6 128-128 128z" style="fill: orangered;" fill="orangered"></path></svg>
                   </button>
                 </div>
             `);
@@ -4416,7 +4523,7 @@
                         let pos = e && e.message && e.message.match(/position (\d+)/);
                         if (pos) {
                             pos = parseInt(pos[1]);
-                            this.tempRule.value = this.tempRule.value.slice(0, pos) + "➡️" + this.tempRule.value[pos] + "⬅️" + this.tempRule.value.slice(pos + 1);
+                            this.tempRule.value = this.tempRule.value.slice(0, pos) + "➡️" + this.tempRule.value.slice(pos);
                         }
                         showTips(i18n("errorJson"));
                         return null;
@@ -4531,6 +4638,11 @@
                 }
                 self.selectorInput.value = selector;
                 self.checkInputSelector();
+                if (self.checkedPath) {
+                    self.checkedPath.classList.remove("checked");
+                }
+                span.classList.add("checked");
+                self.checkedPath = span;
             }, true);
             this.allpath.appendChild(span);
         }
@@ -4845,7 +4957,7 @@
                 let importBtn = createImportBtn(pre);
             });
             document.addEventListener("mouseover", e => {
-                if (/^PRE$/i.test(e.target.nodeName)) {
+                if (compareNodeName(e.target, ["pre"])) {
                     let nameAttr = e.target.getAttribute("name");
                     if (nameAttr == "pagetual" || nameAttr == "user-content-pagetual") {
                         if (e.target.querySelector('#pagetualImport')) return;
@@ -5021,14 +5133,14 @@
             }
             moveUp() {
                 let preE = this.item.previousElementSibling;
-                if (/^P$/i.test(preE.nodeName) && preE.children.length > 1) {
+                if (compareNodeName(preE, ["p"]) && preE.children.length > 1) {
                     this.item.parentNode.insertBefore(this.item, preE);
                     this.saveSort();
                 }
             }
             moveDown() {
                 let nextE = this.item.nextElementSibling;
-                if (/^P$/i.test(nextE.nodeName) && nextE.children.length > 1) {
+                if (compareNodeName(nextE, ["p"]) && nextE.children.length > 1) {
                     this.item.parentNode.insertBefore(nextE, this.item);
                     this.saveSort();
                 }
@@ -5377,7 +5489,7 @@
             }, (rule, err) => {
                 if (rule.id == 1) {
                     showTips(`Failed to update wedata rules! Try to switch to wedata mirror!`);
-                    wedata2githubInput.scrollIntoView();
+                    wedata2githubInput.scrollIntoView({ behavior: "smooth" });
                 } else {
                     showTips(`Failed to update ${rule.url} rules!`);
                 }
@@ -5472,7 +5584,7 @@
                 let pos = e && e.message && e.message.match(/position (\d+)/);
                 if (pos && !editor) {
                     pos = parseInt(pos[1]);
-                    customRulesInput.value = customRulesInput.value.slice(0, pos) + "➡️" + customRulesInput.value[pos] + "⬅️" + customRulesInput.value.slice(pos + 1);
+                    customRulesInput.value = customRulesInput.value.slice(0, pos) + "➡️" + customRulesInput.value.slice(pos);
                 }
                 showTips(i18n("errorJson"));
                 return;
@@ -5617,7 +5729,7 @@
         while(loopable && visible) {
             el = el.parentNode;
 
-            if(el && !/^BODY$/i.test(el.nodeName)) {
+            if(el && !compareNodeName(el, ["body"])) {
                 visible = win.getComputedStyle(el).display != 'none' && win.getComputedStyle(el).visibility != 'hidden';
             }else {
                 loopable = false;
@@ -5693,6 +5805,16 @@
 
     let pageReady = false;
     function initRules(callback) {
+        charset = (document.characterSet || document.charset || document.inputEncoding);
+        let equiv = document.querySelector('[http-equiv="Content-Type"]');
+        if (equiv && equiv.content) {
+            let innerCharSet = equiv.content.match(/charset\=([^;]+)/);
+            if (!innerCharSet) {
+                charsetValid = false;
+            } else if (innerCharSet[1].replace("-", "").toLowerCase() != charset.replace("-", "").toLowerCase()) {
+                charsetValid = false;
+            }
+        } else charsetValid = false;
         storage.getItem("rulesData", data => {
             /*0 wedata格式，1 pagetual格式*/
             ruleUrls = [{
@@ -5869,9 +5991,17 @@
                     });
                 });
                 _GM_registerMenuCommand(i18n(forceState == 1 ? "enable" : "disableSite"), () => {
-                    forceState = (forceState == 1 ? 0 : 1);
+                    if (forceState == 1) {
+                        forceState = 0;
+                        showTips(i18n("enableSiteTips"));
+                        changeStop(false);
+                    } else {
+                        forceState = 1;
+                        showTips(i18n("disableSiteTips"));
+                        changeStop(true);
+                        sideController.remove();
+                    }
                     storage.setItem("forceState_" + location.host, forceState);
-                    showTips(i18n(forceState == 1 ? "disableSiteTips" : "enableSiteTips"));
                     if (!ruleParser.curSiteRule.url) location.reload();
                 });
                 _GM_registerMenuCommand(i18n("toggleAutoScroll"), () => {
@@ -5899,7 +6029,7 @@
         });
     }
 
-    function requestDoc(url, callback){
+    function requestDoc(url, callback) {
         let postParams = url.match(/#p{(.*)}$/);
         if (postParams) {
             postParams = postParams[1];
@@ -5910,7 +6040,7 @@
             'Referer': location.href,
             'User-Agent': navigator.userAgent,
             'accept': 'text/html,application/xhtml+xml,application/xml',
-            "Content-Type": (postParams ? "application/x-www-form-urlencoded" : "text/html") + ";charset=" + (document.characterSet || document.charset || document.inputEncoding),
+            "Content-Type": (postParams ? "application/x-www-form-urlencoded" : "text/html") + ";charset=" + charset,
         };
         if (ruleHeaders) {
             if (ruleHeaders.referer) {
@@ -5924,6 +6054,8 @@
             }
             if (ruleHeaders.contentType) {
                 headers.contentType = ruleHeaders.contentType;
+                let ruleCharset = ruleHeaders.contentType.match(/charset\=([^;]+)/);
+                if (ruleCharset) charset = ruleCharset[1];
             }
             if (ruleHeaders.cookie) {
                 headers.cookie = ruleHeaders.cookie;
@@ -5933,7 +6065,7 @@
             url: url,
             method: postParams ? 'POST' : 'GET',
             data: postParams,
-            overrideMimeType: 'text/html;charset=' + (document.characterSet || document.charset || document.inputEncoding),
+            overrideMimeType: 'text/html;charset=' + charset,
             headers: headers,
             timeout: 20000,
             onload: async function(res) {
@@ -5958,9 +6090,18 @@
                     doc.documentElement.innerHTML = response;
                     let base = doc.querySelector("base");
                     ruleParser.basePath = base ? base.href : url;
-                }
-                catch (e) {
+                } catch (e) {
                     debug('parse error:' + e.toString());
+                }
+                if (charsetValid && !ruleHeaders) {
+                    let equiv = doc.querySelector('[http-equiv="Content-Type"]');
+                    if (equiv && equiv.content) {
+                        let innerCharSet = equiv.content.match(/charset\=([^;]+)/);
+                        if (innerCharSet && innerCharSet[1].replace("-", "").toLowerCase() != charset.replace("-", "").toLowerCase()) {
+                            charset = innerCharSet[1];
+                            return requestDoc(url, callback);
+                        }
+                    }
                 }
                 let pageElement = ruleParser.getPageElement(doc);
                 if ((!pageElement || pageElement.length == 0) && res.status >= 400) {
@@ -5980,7 +6121,7 @@
                     ruleParser.getInsert(true);
                 }
                 //只有1的話怕不是圖片哦
-                if (pageElement && (pageElement.length > 1 || (pageElement.length == 1 && !/^IMG$/i.test(pageElement[0].nodeName)))) {
+                if (pageElement && (pageElement.length > 1 || (pageElement.length == 1 && !compareNodeName(pageElement[0], ["img"])))) {
                     await ruleParser.insertPage(doc, pageElement, url, callback, false);
                     if (ruleParser.curSiteRule.action == 1) {
                         isLoading = true;
@@ -6000,7 +6141,7 @@
                 } else {
                     debug("Stop as no page element");
                     ruleParser.noValidContent(url);
-                    isPause = true;
+                    changeStop(true);
                     callback(false);
                 }
             },
@@ -6111,6 +6252,34 @@
          .pagetual_pageBar a:hover>span.prevScreen {
            margin-top: -${rulesData.opacity == 1 ? 31 : 30}px!important;
            pointer-events: all;
+         }
+         .pagetual_pageBar span.refreshRing {
+           position: absolute;
+           top: 0;
+           opacity: 0;
+           height: 30px;
+           margin-left: calc(50% - 23px);
+           display: block!important;
+         }
+         .pagetual_pageBar a:hover>span.refreshRing {
+           opacity: 0.3;
+           -webkit-animation: pagetual_ring 2.0s infinite linear;
+           animation: pagetual_ring 2.0s infinite linear;
+         }
+         @-webkit-keyframes pagetual_ring {
+           0% { -webkit-transform: rotate(0deg) }
+           100% {
+             -webkit-transform: rotate(360deg);
+           }
+         }
+         @keyframes pagetual_ring {
+           0% {
+             transform: rotate(0deg);
+             -webkit-transform: rotate(0deg);
+           } 100% {
+             transform: rotate(360deg);
+             -webkit-transform: rotate(360deg);
+           }
          }
          .pagetual_pageBar a:hover>span.nextScreen {
            margin-top: 30px!important;
@@ -6232,14 +6401,14 @@
     var loadingDiv = document.createElement("div");
     loadingDiv.style.cssText = "text-indent: initial;cy: initial;d: initial;dominant-baseline: initial;empty-cells: initial;fill: initial;fill-opacity: initial;fill-rule: initial;filter: initial;flex: initial;flex-flow: initial;float: initial;flood-color: initial;flood-opacity: initial;grid: initial;grid-area: initial;height: initial;hyphens: initial;image-orientation: initial;image-rendering: initial;inline-size: initial;inset-block: initial;inset-inline: initial;isolation: initial;letter-spacing: initial;lighting-color: initial;line-break: initial;list-style: initial;margin-block: initial;margin: 0px auto;margin-inline: initial;marker: initial;mask: initial;mask-type: initial;max-block-size: initial;max-height: initial;max-inline-size: initial;max-width: initial;min-block-size: initial;min-height: initial;min-inline-size: initial;min-width: initial;mix-blend-mode: initial;object-fit: initial;object-position: initial;offset: initial;opacity: initial;order: initial;origin-trial-test-property: initial;orphans: initial;outline: initial;outline-offset: initial;overflow-anchor: initial;overflow-clip-margin: initial;overflow-wrap: initial;overflow: initial;overscroll-behavior-block: initial;overscroll-behavior-inline: initial;overscroll-behavior: initial;padding-block: initial;padding: initial;padding-inline: initial;page: initial;page-orientation: initial;paint-order: initial;perspective: initial;perspective-origin: initial;pointer-events: initial;position: initial;quotes: initial;r: initial;resize: initial;ruby-position: initial;rx: initial;ry: initial;scroll-behavior: initial;scroll-margin-block: initial;scroll-margin: initial;scroll-margin-inline: initial;scroll-padding-block: initial;scroll-padding: initial;scroll-padding-inline: initial;scroll-snap-align: initial;scroll-snap-stop: initial;scroll-snap-type: initial;scrollbar-gutter: initial;shape-image-threshold: initial;shape-margin: initial;shape-outside: initial;shape-rendering: initial;size: initial;speak: initial;stop-color: initial;stop-opacity: initial;stroke: initial;stroke-dasharray: initial;stroke-dashoffset: initial;stroke-linecap: initial;stroke-linejoin: initial;stroke-miterlimit: initial;stroke-opacity: initial;stroke-width: initial;tab-size: initial;table-layout: initial;text-align: initial;text-align-last: initial;text-anchor: initial;text-combine-upright: initial;text-decoration: initial;text-decoration-skip-ink: initial;text-indent: initial;text-overflow: initial;text-shadow: initial;text-size-adjust: initial;text-transform: initial;text-underline-offset: initial;text-underline-position: initial;touch-action: initial;transform: initial;transform-box: initial;transform-origin: initial;transform-style: initial;transition: initial;user-select: initial;vector-effect: initial;vertical-align: initial;visibility: initial;border-spacing: initial;-webkit-border-image: initial;-webkit-box-align: initial;-webkit-box-decoration-break: initial;-webkit-box-direction: initial;-webkit-box-flex: initial;-webkit-box-ordinal-group: initial;-webkit-box-orient: initial;-webkit-box-pack: initial;-webkit-box-reflect: initial;-webkit-highlight: initial;-webkit-hyphenate-character: initial;-webkit-line-break: initial;-webkit-line-clamp: initial;-webkit-mask-box-image: initial;-webkit-mask: initial;-webkit-mask-composite: initial;-webkit-perspective-origin-x: initial;-webkit-perspective-origin-y: initial;-webkit-print-color-adjust: initial;-webkit-rtl-ordering: initial;-webkit-ruby-position: initial;-webkit-tap-highlight-color: initial;-webkit-text-combine: initial;-webkit-text-decorations-in-effect: initial;-webkit-text-emphasis: initial;-webkit-text-emphasis-position: initial;-webkit-text-fill-color: initial;-webkit-text-security: initial;-webkit-text-stroke: initial;-webkit-transform-origin-x: initial;-webkit-transform-origin-y: initial;-webkit-transform-origin-z: initial;-webkit-user-drag: initial;-webkit-user-modify: initial;white-space: initial;widows: initial;width: initial;will-change: initial;word-break: initial;word-spacing: initial;x: initial;y: initial;z-index: 2147483647;";
 
-    const loadingCSS = `text-indent: unset; display: block; position: initial; margin: auto auto 5px auto; shape-rendering: auto; vertical-align: middle; visibility: visible; width: initial; height: initial; text-align: center; color: #6e6e6e; flex: 0;`;
+    const loadingCSS = `font-size: initial; text-indent: unset; display: block; position: initial; margin: auto auto 5px auto; shape-rendering: auto; vertical-align: middle; visibility: visible; width: initial; height: initial; text-align: center; color: #6e6e6e; flex: 0;`;
     function setLoadingDiv(loadingText) {
-        loadingDiv.innerHTML = createHTML(`<p class="pagetual_loading_text" style="${loadingCSS}display: inline-block;width: 100%;">${loadingText}</p>${rulesData.hideLoadingIcon ? "" : `<div class="pagetual_loading"><svg width="50" height="50" style="position:relative;cursor: pointer;width: 50px;height: 50px;vertical-align: middle;fill: currentColor;overflow: hidden;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" fill="#6e6e6e"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" fill="#6e6e6e"></path></svg></div>`}`);
+        loadingDiv.innerHTML = createHTML(`<p class="pagetual_loading_text" style="${loadingCSS}display: inline-block;width: 100%;">${loadingText}</p>${rulesData.hideLoadingIcon ? "" : `<div class="pagetual_loading"><svg width="50" height="50" style="position:relative;cursor: pointer;width: 50px;height: 50px;vertical-align: middle;fill: currentColor;overflow: hidden;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" style="fill: #6e6e6e;" fill="#6e6e6e"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" style="fill: #6e6e6e;" fill="#6e6e6e"></path></svg></div>`}`);
     }
 
-    var upSvg = `<svg width="30" height="30" class="upSvg pagetual" style="display:initial;position:relative;cursor: pointer;margin: 0 8px;width: 30px;height: 30px;vertical-align: baseline;fill: currentColor;overflow: hidden;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" fill="#604b4a"></path></svg>`;
+    var upSvg = `<svg width="30" height="30" class="upSvg pagetual" style="display:initial;position:relative;cursor: pointer;margin: 0 8px;width: 30px;height: 30px;vertical-align: baseline;fill: currentColor;overflow: hidden;" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" style="fill: #604b4a;" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" style="fill: #604b4a;" fill="#604b4a"></path></svg>`;
     var upSvgCSS = `text-align: center;display: initial;position: relative;cursor: pointer;margin: 0 8px;width: 30px;height: 30px;vertical-align: baseline;fill: currentColor;overflow: hidden;`;
-    var downSvg = `<svg width="30" height="30" class="downSvg pagetual" style="display:initial;position:relative;cursor: pointer;margin: 0 8px;width: 30px;height: 30px;vertical-align: baseline;fill: currentColor;overflow: hidden;transform: rotate(180deg);" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" fill="#604b4a"></path></svg>`;
+    var downSvg = `<svg width="30" height="30" class="downSvg pagetual" style="display:initial;position:relative;cursor: pointer;margin: 0 8px;width: 30px;height: 30px;vertical-align: baseline;fill: currentColor;overflow: hidden;transform: rotate(180deg);" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg"><path d="M296 440c-44.1 0-80 35.9-80 80s35.9 80 80 80 80-35.9 80-80-35.9-80-80-80z" style="fill: #604b4a;" fill="#604b4a"></path><path d="M960 512c0-247-201-448-448-448S64 265 64 512c0 1.8 0.1 3.5 0.1 5.3 0 0.9-0.1 1.8-0.1 2.7h0.2C68.5 763.3 267.7 960 512 960c236.2 0 430.1-183.7 446.7-415.7 0.1-0.8 0.1-1.6 0.2-2.3 0.4-4.6 0.5-9.3 0.7-13.9 0.1-2.7 0.4-5.3 0.4-8h-0.2c0-2.8 0.2-5.4 0.2-8.1z m-152 8c0 44.1-35.9 80-80 80s-80-35.9-80-80 35.9-80 80-80 80 35.9 80 80zM512 928C284.4 928 99 744.3 96.1 517.3 97.6 408.3 186.6 320 296 320c110.3 0 200 89.7 200 200 0 127.9 104.1 232 232 232 62.9 0 119.9-25.2 161.7-66-66 142.7-210.4 242-377.7 242z" style="fill: #604b4a;" fill="#604b4a"></path></svg>`;
     var downSvgCSS = `text-align: center;display: initial;position: relative;cursor: pointer;margin: 0 8px;width: 30px;height: 30px;vertical-align: baseline;fill: currentColor;overflow: hidden;transform: rotate(180deg);`;
 
     const initStyle = `text-indent: initial;display: contents;right: unset;left: unset;top: unset;bottom: unset;inset: unset;clear: both;cy: initial;d: initial;dominant-baseline: initial;empty-cells: initial;fill: initial;fill-opacity: initial;fill-rule: initial;filter: initial;flex: initial;flex-flow: initial;float: initial;flood-color: initial;flood-opacity: initial;grid: initial;grid-area: initial;height: initial;hyphens: initial;image-orientation: initial;image-rendering: initial;inline-size: initial;inset-block: initial;inset-inline: initial;isolation: initial;letter-spacing: initial;lighting-color: initial;line-break: initial;list-style: initial;margin-block: initial;margin: 0px 5px;margin-inline: initial;marker: initial;mask: initial;mask-type: initial;max-block-size: initial;max-height: initial;max-inline-size: initial;max-width: initial;min-block-size: initial;min-height: initial;min-inline-size: initial;min-width: initial;mix-blend-mode: initial;object-fit: initial;object-position: initial;offset: initial;opacity: initial;order: initial;orphans: initial;outline: initial;outline-offset: initial;overflow-anchor: initial;overflow-clip-margin: initial;overflow-wrap: initial;overflow: initial;overscroll-behavior-block: initial;overscroll-behavior-inline: initial;overscroll-behavior: initial;padding-block: initial;padding: initial;padding-inline: initial;page: initial;page-orientation: initial;paint-order: initial;perspective: initial;perspective-origin: initial;pointer-events: initial;position: relative;quotes: initial;r: initial;resize: initial;ruby-position: initial;rx: initial;ry: initial;scroll-behavior: initial;scroll-margin-block: initial;scroll-margin: initial;scroll-margin-inline: initial;scroll-padding-block: initial;scroll-padding: initial;scroll-padding-inline: initial;scroll-snap-align: initial;scroll-snap-stop: initial;scroll-snap-type: initial;scrollbar-gutter: initial;shape-image-threshold: initial;shape-margin: initial;shape-outside: initial;shape-rendering: initial;size: initial;speak: initial;stop-color: initial;stop-opacity: initial;stroke: initial;stroke-dasharray: initial;stroke-dashoffset: initial;stroke-linecap: initial;stroke-linejoin: initial;stroke-miterlimit: initial;stroke-opacity: initial;stroke-width: initial;tab-size: initial;table-layout: initial;text-align: initial;text-align-last: initial;text-anchor: initial;text-combine-upright: initial;text-decoration: initial;text-decoration-skip-ink: initial;text-indent: initial;text-overflow: initial;text-shadow: initial;text-size-adjust: initial;text-transform: initial;text-underline-offset: initial;text-underline-position: initial;touch-action: initial;transform: initial;transform-box: initial;transform-origin: initial;transform-style: initial;transition: initial;user-select: initial;vector-effect: initial;vertical-align: initial;visibility: initial;border-spacing: initial;-webkit-border-image: initial;-webkit-box-align: initial;-webkit-box-decoration-break: initial;-webkit-box-direction: initial;-webkit-box-flex: initial;-webkit-box-ordinal-group: initial;-webkit-box-orient: initial;-webkit-box-pack: initial;-webkit-box-reflect: initial;-webkit-highlight: initial;-webkit-hyphenate-character: initial;-webkit-line-break: initial;-webkit-line-clamp: initial;-webkit-mask-box-image: initial;-webkit-mask: initial;-webkit-mask-composite: initial;-webkit-perspective-origin-x: initial;-webkit-perspective-origin-y: initial;-webkit-print-color-adjust: initial;-webkit-rtl-ordering: initial;-webkit-ruby-position: initial;-webkit-tap-highlight-color: initial;-webkit-text-combine: initial;-webkit-text-decorations-in-effect: initial;-webkit-text-emphasis: initial;-webkit-text-emphasis-position: initial;-webkit-text-fill-color: initial;-webkit-text-security: initial;-webkit-text-stroke: initial;-webkit-transform-origin-x: initial;-webkit-transform-origin-y: initial;-webkit-transform-origin-z: initial;-webkit-user-drag: initial;-webkit-user-modify: initial;white-space: initial;widows: initial;width: initial;will-change: initial;word-break: initial;word-spacing: initial;x: initial;y: initial;`;
@@ -6263,7 +6432,7 @@
             });
             if (!isPause) ruleParser.showAddedElements();
             manualPause = isPause;
-            storage.setItem("pauseState_" + location.host, isPause ? true : "");
+            if (sideController.inited) storage.setItem("pauseState_" + location.host, isPause ? true : "");
         }, 350);
     }
 
@@ -6388,7 +6557,7 @@
             if (forceState == 1) return;
             if (checkClickedEle) {
                 if (!clickedSth && checkClickedEle && checkClickedEle.nodeName) {
-                    if (/^(A|BUTTON)$/i.test(checkClickedEle.nodeName)) {
+                    if (compareNodeName(checkClickedEle, ["a", "button"])) {
                         clickedSth = true;
                     } else {
                         let targetStyle = _unsafeWindow.getComputedStyle(checkClickedEle);
@@ -6405,13 +6574,14 @@
             if (document.hidden) return;
             if ((prevPathname !== window.location.pathname || prevSearch !== window.location.search) && window.location.href != ruleParser.historyUrl) {
                 checkUrlTime = 2000;
-                prevPathname = window.location.pathname;
-                prevSearch = window.location.search;
+                urlWillChange = true;
                 var e = new Event('pagetual_pushState');
                 e.arguments = arguments;
                 window.dispatchEvent(e);
                 clickedSth = false;
             }
+            prevPathname = window.location.pathname;
+            prevSearch = window.location.search;
         };
         checkUrlTimer = setTimeout(checkFunc, checkUrlTime);
 
@@ -6430,16 +6600,18 @@
         let scrolly = window.scrollY;
         let windowHeight = window.innerHeight || document.documentElement.clientHeight;
         if (!scrollContainer || !document.documentElement.contains(scrollContainer)) {
-            let pageEle = ruleParser.getPageElement(document);
-            if (pageEle && pageEle.length) {
-                let parent = pageEle[0].parentNode, pageScrollY = parent.scrollTop;;
-                while (parent && pageScrollY == 0) {
-                    parent = parent.parentNode;
-                    pageScrollY = parent.scrollTop;
-                }
-                if (pageScrollY) {
-                    scrollContainer = parent;
-                    return scrollContainer.scrollHeight - pageScrollY - windowHeight;
+            if (curPage > 1 || ruleParser.nextLinkHref) {
+                let pageEle = ruleParser.getPageElement(document);
+                if (pageEle && pageEle.length) {
+                    let parent = pageEle[0].parentNode, pageScrollY = parent.scrollTop;;
+                    while (parent && pageScrollY == 0) {
+                        parent = parent.parentNode;
+                        pageScrollY = parent.scrollTop;
+                    }
+                    if (pageScrollY) {
+                        scrollContainer = parent;
+                        return scrollContainer.scrollHeight - pageScrollY - windowHeight;
+                    }
                 }
             }
         }
@@ -6522,8 +6694,8 @@
                 checkScrollReach();
             }
             ruleParser.changeVisibility();
+            let curScroll = getBody(document).scrollTop || document.documentElement.scrollTop;
             if (ruleParser.curSiteRule.lockScroll) {
-                let curScroll = getBody(document).scrollTop || document.documentElement.scrollTop;
                 if (isLoading && Math.abs(lastScroll - curScroll) > 350) {
                     getBody(document).scrollTop = lastScroll;
                     document.documentElement.scrollTop = lastScroll;
@@ -6531,9 +6703,14 @@
                     lastScroll = curScroll;
                 }
             }
+            if (targetY >= 0) {
+                if (Math.abs(targetY - curScroll) < 100) {
+                    targetY = -1;
+                }
+            }
         };
         dblclickHandler = e => {
-            if (forceState == 1 || /^(INPUT|TEXTAREA|SELECT)$/i.test(e.target.nodeName)) return;
+            if (forceState == 1 || compareNodeName(e.target, ["input", "textarea", "select", "a", "button", "svg", "use", "img", "path"])) return;
             if (!rulesData.dbClick2StopKey) {
                 if ((rulesData.dbClick2StopCtrl && !e.ctrlKey) ||
                    (rulesData.dbClick2StopAlt && !e.altKey) ||
@@ -6542,14 +6719,14 @@
                     return;
                 }
             }
-            if (!/^BODY$/i.test(e.target.nodeName) && !e.target.classList.contains('pagetual_pageBar')) {
+            if (!compareNodeName(e.target, ["body"]) && !e.target.classList.contains('pagetual_pageBar')) {
                 try {
                     let selection = window.getSelection();
                     let selStr = selection.toString().trim();
                     if (!selStr) {
                         selection = selection.getRangeAt(0);
                         selStr = selection && selection.cloneContents().children[0];
-                        if (selStr && !/^IMG$/i.test(selStr.nodeName)) selStr = false;
+                        if (selStr && !compareNodeName(selStr, ["img"])) selStr = false;
                     }
                     if (selStr) {
                         return;
@@ -6585,14 +6762,22 @@
                     return;
                 }
                 if (document.activeElement &&
-                    (/^(INPUT|TEXTAREA)$/i.test(document.activeElement.nodeName) ||
+                    (compareNodeName(document.activeElement, ["input", "textarea"]) ||
                      document.activeElement.contentEditable == 'true')) {
                     return;
                 }
                 var key = e.key.toLowerCase();
                 if (rulesData.dbClick2StopKey.toLowerCase() == key) {
-                    forceState = (forceState == 1 ? 0 : 1);
-                    showTips(i18n(forceState == 1 ? "disableSiteTips" : "enableSiteTips"));
+                    if (forceState == 1) {
+                        forceState = 0;
+                        showTips(i18n("enableSiteTips"));
+                        changeStop(false);
+                    } else {
+                        forceState = 1;
+                        showTips(i18n("disableSiteTips"));
+                        changeStop(true);
+                        sideController.remove();
+                    }
                     if (!ruleParser.curSiteRule.url) {
                         storage.setItem("forceState_" + location.host, forceState);
                         location.reload();
@@ -6613,7 +6798,7 @@
         if (manualMode) {
             manualModeKeyHandler = e => {
                 if (document.activeElement &&
-                    (/^(INPUT|TEXTAREA)$/i.test(document.activeElement.nodeName) ||
+                    (compareNodeName(document.activeElement, ["input", "textarea"]) ||
                      document.activeElement.contentEditable == 'true')) {
                     return;
                 }
@@ -6633,7 +6818,7 @@
         if (rulesData.arrowToScroll) {
             keyupHandler = e => {
                 if (document.activeElement &&
-                    (/^(INPUT|TEXTAREA)$/i.test(document.activeElement.nodeName) ||
+                    (compareNodeName(document.activeElement, ["input", "textarea"]) ||
                      document.activeElement.contentEditable == 'true')) {
                     return;
                 }
@@ -6643,7 +6828,7 @@
                         scrollToPageBar(nextPageBar);
                     } else {
                         let scrollTop = getBody(document).scrollTop || document.documentElement.scrollTop;
-                        window.scrollTo({ top: scrollTop + (window.innerHeight || document.documentElement.clientHeight), behavior: 'smooth'});
+                        window.scrollTo({ top: scrollTop + (window.innerHeight || document.documentElement.clientHeight), behavior: 'instant'});
                     }
                 } else if (e.keyCode == 37) {
                     let prePageBar = getPageBar().preBar;
@@ -6651,7 +6836,7 @@
                         scrollToPageBar(prePageBar);
                     } else {
                         let scrollTop = getBody(document).scrollTop || document.documentElement.scrollTop;
-                        window.scrollTo({ top: scrollTop - (window.innerHeight || document.documentElement.clientHeight), behavior: 'smooth'});
+                        window.scrollTo({ top: scrollTop - (window.innerHeight || document.documentElement.clientHeight), behavior: 'instant'});
                     }
                 }
             };
@@ -6723,13 +6908,14 @@
         return loadmoreBtn;
     }
 
+    var targetY = -1;
     function scrollToPageBar(bar){
         let yOffset = -20;
         if (typeof ruleParser.curSiteRule.pageBarTop !== 'undefined') {
             yOffset = -ruleParser.curSiteRule.pageBarTop;
         }
-        const y = bar.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        window.scrollTo({ top: y, behavior: 'smooth'});
+        targetY = bar.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: targetY, behavior: 'smooth'});
     }
 
     const pageNumReg=/[&\/\?](p=|page[=\/_-]?)\d+|[_-]\d+\./;
@@ -6759,7 +6945,7 @@
         if (rulesData.opacity == 0 || ruleParser.curSiteRule.pageBar === 0) return null;
         url = url.replace(/#p{.*/, "");
         let example = (ruleParser.curSiteRule.insertPos == 2 || ruleParser.curSiteRule.insertPos == "in") ? insert.children[0] : (insert.parentNode.children[0] || insert);
-        while (example && (/^(SCRIPT|STYLE)$/i.test(example.nodeName) || example.className == "pagetual_pageBar")) {
+        while (example && (compareNodeName(example, ["script", "style"]) || example.className == "pagetual_pageBar")) {
             example = example.nextElementSibling;
         }
         if (!example || !example.parentNode) example = insert;
@@ -6772,11 +6958,11 @@
         if (forceState == 2) {
             inTable = inLi = false;
         } else {
-            inTable = /^(TABLE|TBODY)$/i.test(example.parentNode.nodeName) ||
-            /^(TR|TBODY)$/i.test(example.nodeName) ||
+            inTable = compareNodeName(example.parentNode, ["table", "tbody"]) ||
+            compareNodeName(example, ["tr", "tbody"]) ||
             exampleStyle.display == "table-row" ||
-            (example.nextElementSibling && /^(TR|TBODY)$/i.test(example.nextElementSibling.nodeName));
-            inLi = /^LI$/i.test(example.nodeName) || (example.nextElementSibling && /^LI$/i.test(example.nextElementSibling.nodeName));
+            (example.nextElementSibling && compareNodeName(example.nextElementSibling, ["tr", "tbody"]));
+            inLi = compareNodeName(example, ["li"]) || (example.nextElementSibling && compareNodeName(example.nextElementSibling, ["li"]));
         }
         let pageBar = document.createElement(inTable ? "tr" : (inLi ? "li" : "div"));
         let upSpan = document.createElement("span");
@@ -6805,14 +6991,6 @@
         if (openInNewTab == 1) pageText.target = "_blank";
         pageBar.appendChild(upSpan);
         pageBar.appendChild(pageText);
-        if (rulesData.pageBarMenu) {
-            pageText.addEventListener("click", e => {
-                e.stopPropagation();
-                if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
-                e.preventDefault();
-                picker.start();
-            });
-        }
         let touched = false;
         let touchBodyHandler = e => {
             touched = false;
@@ -6881,7 +7059,8 @@
                 scrollToPageBar(prePageBar);
             } else {
                 let scrollTop = getBody(document).scrollTop || document.documentElement.scrollTop;
-                window.scrollTo({ top: scrollTop - (window.innerHeight || document.documentElement.clientHeight), behavior: 'smooth'});
+                targetY = scrollTop - (window.innerHeight || document.documentElement.clientHeight);
+                window.scrollTo({ top: targetY, behavior: 'smooth'});
             }
         });
         nextBtn.addEventListener("click", e => {
@@ -6892,12 +7071,40 @@
                 scrollToPageBar(nextPageBar);
             } else {
                 scrollH = Math.max(document.documentElement.scrollHeight, getBody(document).scrollHeight);
-                window.scrollTo({ top: scrollH || 9999999, behavior: 'smooth'});
+                targetY = scrollH || 9999999;
+                window.scrollTo({ top: targetY, behavior: 'smooth'});
             }
         });
         if (!rulesData.hideBarArrow) {
             pageText.insertBefore(preBtn, pageText.firstChild);
             pageText.insertBefore(nextBtn, pageText.firstChild);
+        }
+        if (curForceIframe) {
+            let bgRing = document.createElement("span");
+            bgRing.className = "refreshRing";
+            bgRing.style.display = "none";
+            bgRing.innerHTML = createHTML(upSvg);
+            pageText.title = "Refresh";
+            pageText.appendChild(bgRing);
+            pageText.addEventListener("click", e => {
+                e.stopPropagation();
+                if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+                e.preventDefault();
+                let nextEle = pageBar && pageBar.nextElementSibling;
+                if (nextEle && nextEle.name == 'pagetual-iframe') {
+                    if (curForceIframe == nextEle) {
+                        nextEle.setAttribute("loaded", "refresh");
+                    }
+                    nextEle.src = nextEle.src;
+                }
+            });
+        } else if (rulesData.pageBarMenu) {
+            pageText.addEventListener("click", e => {
+                e.stopPropagation();
+                if (e.ctrlKey || e.altKey || e.shiftKey || e.metaKey) return;
+                e.preventDefault();
+                picker.start();
+            });
         }
         pageBar.appendChild(downSpan);
         if (forceState == 2) {
@@ -6911,8 +7118,8 @@
                 pageBar.style.gridColumn = "1/-1";
             }
             if (inTable) {
-                example = (/^(TR|TBODY)$/i.test(example.nodeName)) ? example : example.nextElementSibling || example;
-                if (/^TBODY$/i.test(example.nodeName)) example = example.querySelector("tr");
+                example = compareNodeName(example, ["tr", "tbody"]) ? example : example.nextElementSibling || example;
+                if (compareNodeName(example, ["tbody"])) example = example.querySelector("tr");
                 let nextTr = example;
                 while (nextTr && nextTr.children.length == 0) nextTr = nextTr.nextElementSibling;
                 if (nextTr) example = nextTr;
@@ -6923,7 +7130,7 @@
                     });
                 } else {
                     [].forEach.call(example.children, el => {
-                        if (/^(TD|TH)$/i.test(el.nodeName)) {
+                        if (compareNodeName(el, ["td", "th"])) {
                             tdNum += el.colSpan || 1;
                         }
                     });
@@ -6947,7 +7154,7 @@
                 td.appendChild(inTd);
                 pageBar.appendChild(td);
             } else if (inLi) {
-                example = /^LI$/i.test(example.nodeName) ? example : example.nextElementSibling || example;
+                example = compareNodeName(example, ["li"]) ? example : example.nextElementSibling || example;
                 pageBar.style.opacity = 1;
                 pageBar.style.display = getComputedStyle(example).display;
                 pageBar.style.backgroundColor = "unset";
@@ -7214,6 +7421,8 @@
                     } else if (eles && eles.length > 0) {
                         callback(doc, eles);
                     } else if (tryTimes++ < 100) {
+                        getBody(doc).scrollTop = 9999999;
+                        doc.documentElement.scrollTop = 9999999;
                         setTimeout(() => {
                             checkIframe();
                         }, waitTime);
@@ -7222,7 +7431,7 @@
                         if (failFromIframe++ > 2) {
                             failFromIframe = 0;
                             debug("Stop as failFromIframe");
-                            isPause = true;
+                            changeStop(true);
                             callback(false, false);
                         } else {
                             ruleParser.noValidContent(url);
@@ -7284,7 +7493,7 @@
     function emuPage(callback) {
         let orgPage = null, preContent = null, iframeDoc, checkTimes = 0, loadmoreBtn, pageEle, nextLink, loadmoreEnd = false, waitTimes = 80, changed = false;
         function returnFalse(log) {
-            if (curPage > 1 && rulesData.lastPageTips) showTips(i18n("lastPage"));
+            if (curPage > 1 && rulesData.lastPageTips) showTips(i18n("lastPage"), "", 800);
             debug(log);
             isPause = true;
             callback(false, false);
@@ -7345,6 +7554,8 @@
                     if (!nextLink || !nextLink.offsetParent) nextLink = await ruleParser.getNextLink(iframeDoc, true);
                     if (nextLink) pageEle = ruleParser.getPageElement(iframeDoc, emuIframe.contentWindow, true);
                     if (!pageEle || pageEle.length == 0 || !nextLink) {
+                        getBody(iframeDoc).scrollTop = 9999999;
+                        iframeDoc.documentElement.scrollTop = 9999999;
                         if (waitTimes-- > 0) {
                             setTimeout(() => {
                                 checkPage();
@@ -7357,11 +7568,12 @@
                     returnFalse("Stop as no page when emu");
                     return;
                 }
-                if (/^UL$/i.test(pageEle[0].nodeName)) pageEle = pageEle[0].children;
-                pageEle = pageEle[parseInt((pageEle.length - 1) / 2)];
-                while(pageEle && ((pageEle.scrollHeight && pageEle.scrollHeight < 50) || !pageEle.offsetParent || (!/^IMG$/i.test(pageEle.nodeName) && !pageEle.innerHTML.trim()))) {
-                    if (pageEle.nextElementSibling) pageEle = pageEle.nextElementSibling;
-                    else break;
+                pageEle = [].filter.call(pageEle, ele => {return ele && !compareNodeName(ele, ["style", "script", "meta"])});
+                if (compareNodeName(pageEle[0], ["ul"]) || pageEle.length == 1) pageEle = pageEle[0];
+                else if (pageEle[0].parentNode == pageEle[1].parentNode) {
+                    pageEle = pageEle[0].parentNode;
+                } else {
+                    pageEle = pageEle[0];
                 }
                 if (ruleParser.curSiteRule.singleUrl && orgContent != pageEle.innerHTML) {
                     orgContent = pageEle.innerHTML;
@@ -7374,7 +7586,7 @@
                 }
                 orgPage = pageEle;
                 if (nextLink) {
-                    if (/^IMG$/i.test(orgPage.nodeName)) {
+                    if (compareNodeName(orgPage, ["img"])) {
                         if (!ruleParser.curSiteRule.lazyImgSrc) ruleParser.curSiteRule.lazyImgSrc = "0";
                         if (orgPage.src) {
                             orgContent = orgPage.src;
@@ -7410,12 +7622,12 @@
             }
             let eles = ruleParser.getPageElement(iframeDoc, emuIframe.contentWindow, true), checkItem;
             if (eles && eles.length > 0) {
-                checkItem = eles;
-                if (/^UL$/i.test(eles[0].nodeName)) checkItem = eles[0].children;
-                checkItem = checkItem[parseInt((checkItem.length - 1) / 2)];
-                while(checkItem && ((checkItem.scrollHeight && checkItem.scrollHeight < 50) || !checkItem.offsetParent || (!/^IMG$/i.test(checkItem.nodeName) && !checkItem.innerHTML.trim()))) {
-                    if (checkItem.nextElementSibling) checkItem = checkItem.nextElementSibling;
-                    else break;
+                eles = [].filter.call(eles, ele => {return ele && !compareNodeName(ele, ["style", "script", "meta"])});
+                if (compareNodeName(eles[0], ["ul"]) || eles.length == 1) checkItem = eles[0];
+                else if (eles[0].parentNode == eles[1].parentNode) {
+                    checkItem = eles[0].parentNode;
+                } else {
+                    checkItem = eles[0];
                 }
             }
             if (!checkItem || (checkEval && !checkEval(iframeDoc))) {
@@ -7425,7 +7637,7 @@
                 }, waitTime);
             } else {
                 let checkInner;
-                if (/^IMG$/i.test(checkItem.nodeName)) {
+                if (compareNodeName(checkItem, ["img"])) {
                     if (checkItem.src) {
                         checkInner = checkItem.src;
                     } else {
@@ -7563,6 +7775,10 @@
     }
 
     function resizeIframe(iframe, frameDoc, pageEle) {
+        if (targetY >= 0) {
+            window.scrollTo({ top: targetY, behavior: 'instant'});
+            targetY = -1;
+        }
         let curScroll = getBody(document).scrollTop || document.documentElement.scrollTop;
         if (ruleParser.curSiteRule.singleUrl || forceState === 2) {
             let height = (getBody(frameDoc).scrollHeight || getBody(frameDoc).offsetHeight || 500);
@@ -7615,8 +7831,11 @@
                 }
             }
         }
-        getBody(document).scrollTop = curScroll;
-        document.documentElement.scrollTop = curScroll;
+        let newScroll = getBody(document).scrollTop || document.documentElement.scrollTop;
+        if (newScroll != curScroll) {
+            getBody(document).scrollTop = curScroll;
+            document.documentElement.scrollTop = curScroll;
+        }
     }
 
     function scrollToResize(e) {
@@ -7653,9 +7872,10 @@
         }
     }
 
+    var curForceIframe;
     function forceIframe(url, callback) {
         url = url.indexOf('=') == -1 ? url.replace(/#[^#]*/,"") : url;
-        let curIframe = document.createElement('iframe'), iframeDoc, pageElement = null, isloaded = false, inAction = true;
+        let curIframe = document.createElement('iframe'), iframeDoc, pageElement = null, inAction = true;
         let loadedHandler = () => {
             let getPageEle = () => {
                 if (ruleParser.curSiteRule.singleUrl) {
@@ -7668,8 +7888,11 @@
                 }
             };
             resizeIframe(curIframe, iframeDoc, getPageEle());
-            if (isloaded) return;
-            isloaded = true;
+            let loaded = curIframe.getAttribute("loaded");
+            if (loaded == "true") {
+                return;
+            }
+            curIframe.setAttribute("loaded", "true");
             let getIframe = () => {
                 return curIframe;
             };
@@ -7677,15 +7900,17 @@
                 return iframeDoc;
             };
             ruleParser.insertPage(iframeDoc, [], url, ele => {
-                callback(curIframe);
+                callback(curIframe, loaded == "refresh");
                 inAction = false;
             }, true);
-            resizePool.push([getPageEle, getIframe, getFrameDoc]);
+            if (!loaded) {
+                resizePool.push([getPageEle, getIframe, getFrameDoc]);
+            }
         };
         let checkIframeTimer = setInterval(() => {
             if (!curIframe.parentNode) {
                 clearInterval(checkIframeTimer);
-                return isloaded || callback(false);
+                return curIframe.getAttribute("loaded") == "true" || callback(false);
             }
         }, 500);
         let code = ruleParser.curSiteRule.iframeInit;
@@ -7778,6 +8003,7 @@
         };
         document.addEventListener("scroll", forceRefresh);
         curIframe.src = url;
+        curForceIframe = curIframe;
         let insert = ruleParser.getInsert();
         let body = getBody(document);
         let curScroll = body.scrollTop || document.documentElement.scrollTop;
@@ -7849,10 +8075,14 @@
                 nextLink = ruleParser.nextLinkHref;
             }
             if (!nextLink) {
-                if (curPage == 1 && (ruleParser.curSiteRule.pinUrl || tryTimes++ <= 3)) {
-                    setTimeout(() => {isLoading = false}, 500);
-                } else if (curPage > 1 && rulesData.lastPageTips && !showedLastPageTips) {
-                    showTips(i18n("lastPage"));
+                if (curPage == 1) {
+                    if (ruleParser.curSiteRule.pinUrl) {
+                        setTimeout(() => {isLoading = false}, 500);
+                    } else if (tryTimes++ < 3) {
+                        setTimeout(() => {isLoading = false}, 1000);
+                    }
+                } else if (rulesData.lastPageTips && !showedLastPageTips) {
+                    showTips(i18n("lastPage"), "", 800);
                     showedLastPageTips = true;
                 }
                 return;
@@ -7907,13 +8137,15 @@
                         debug(e);
                     }
                 } else if ((forceState == 2 || ruleParser.curSiteRule.action == 2) && !isJs) {
-                    forceIframe(nextLink, (iframe) => {
+                    forceIframe(nextLink, (iframe, refresh) => {
                         if (urlChanged || isPause) {
                             loadPageOver();
                             return;
                         }
-                        let pageBar = createPageBar(nextLink);
-                        if (pageBar && iframe && iframe.parentNode) iframe.parentNode.insertBefore(pageBar, iframe);
+                        if (!refresh) {
+                            let pageBar = createPageBar(nextLink);
+                            if (pageBar && iframe && iframe.parentNode) iframe.parentNode.insertBefore(pageBar, iframe);
+                        }
                         loadPageOver();
                         checkAutoLoadNum();
                     });
